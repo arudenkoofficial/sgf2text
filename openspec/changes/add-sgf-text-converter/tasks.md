@@ -23,25 +23,25 @@
 
 ## 4. Replay and captures
 
-- [ ] 4.1 Write a failing test capturing a single stone, and confirm from it how `@sabaki/go-board` reports the resulting position — this is the risk flagged in the design and must be settled before anything is built on top.
-- [ ] 4.2 Implement `src/replay.ts` deriving captured vertices by diffing the position before and after each move.
-- [ ] 4.3 Write failing tests for a captured group, a corner group, a ko recapture, a move that captures nothing, and a move placed on a vertex with no liberties of its own that captures an adjacent group — the last one pins down the removal order; make them pass.
-- [ ] 4.4 Write a failing test that a handicap setup is placed on the board before the first move, so captures in a handicap game are computed correctly; make it pass.
+- [x] 4.1 Write a failing test capturing a single stone, and confirm from it how `@sabaki/go-board` reports the resulting position — this is the risk flagged in the design and must be settled before anything is built on top.
+- [x] 4.2 Implement `src/replay.ts` deriving captured vertices by diffing the position before and after each move.
+- [x] 4.3 Write failing tests for a captured group, a corner group, a ko recapture, a move that captures nothing, and a move placed on a vertex with no liberties of its own that captures an adjacent group — the last one pins down the removal order; make them pass.
+- [x] 4.4 Write a failing test that a handicap setup is placed on the board before the first move, so captures in a handicap game are computed correctly; make it pass.
 
 ## 5. Rendering
 
-- [ ] 5.1 Write failing tests for `src/render.ts` against a record fixture: metadata block precedes moves, absent metadata lines are omitted rather than printed empty, move numbering is continuous.
-- [ ] 5.2 Implement the renderer over a locale interface, with no language strings in the renderer itself.
-- [ ] 5.3 Write failing tests for capture lines (three stones listed by coordinate, singular form for one stone) and handicap lines (four coordinates listed); make them pass.
-- [ ] 5.4 Write failing tests for result phrasing: `W+R`, `B+3.5`, `B+T`, a draw, and an absent result; make them pass.
-- [ ] 5.5 Add `src/locales/ru.ts` and `src/locales/en.ts`, each pairing its vocabulary with the coordinate system it uses.
-- [ ] 5.6 Write a failing test that an unknown locale raises an error naming the supported ones; make it pass.
+- [x] 5.1 Write failing tests for `src/render.ts` against a record fixture: metadata block precedes moves, absent metadata lines are omitted rather than printed empty, move numbering is continuous.
+- [x] 5.2 Implement the renderer over a locale interface, with no language strings in the renderer itself.
+- [x] 5.3 Write failing tests for capture lines (three stones listed by coordinate, singular form for one stone) and handicap lines (four coordinates listed); make them pass.
+- [x] 5.4 Write failing tests for result phrasing: `W+R`, `B+3.5`, `B+T`, a draw, and an absent result; make them pass.
+- [x] 5.5 Add `src/locales/ru.ts` and `src/locales/en.ts`, each pairing its vocabulary with the coordinate system it uses.
+- [x] 5.6 Write a failing test that an unknown locale raises an error naming the supported ones; make it pass.
 
 ## 6. Public API
 
-- [ ] 6.1 Write failing tests for `src/index.ts`: `sgfToText` with a locale option defaulting to `ru`, and `sgfToRecord` returning a record free of display strings.
-- [ ] 6.2 Implement `src/index.ts` and confirm `tsc` emits `dist/` with declarations.
-- [ ] 6.3 Add an end-to-end test converting every fixture in both locales, asserting that none of them throws — the regression net against the five defects of the Japanese converter.
+- [x] 6.1 Write failing tests for `src/index.ts`: `sgfToText` with a locale option defaulting to `ru`, and `sgfToRecord` returning a record free of display strings.
+- [x] 6.2 Implement `src/index.ts` and confirm `tsc` emits `dist/` with declarations.
+- [x] 6.3 Add an end-to-end test converting every fixture in both locales, asserting that none of them throws — the regression net against the five defects of the Japanese converter.
 
 ## 7. CLI
 
