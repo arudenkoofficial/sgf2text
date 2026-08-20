@@ -1,0 +1,6 @@
+node_modules/
+dist/
+web/dist/
+.claude/worktrees/
+.DS_Store
+*.tsbuildinfo
