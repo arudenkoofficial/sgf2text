@@ -57,6 +57,33 @@
     <link rel="alternate" hreflang="en" href="https://sgf.rudenko.live/?lang=en" />
     <link rel="alternate" hreflang="ru" href="https://sgf.rudenko.live/?lang=ru" />
     <link rel="alternate" hreflang="x-default" href="https://sgf.rudenko.live/" />
+
+    <!--
+      The two faces the page is served in. Without these the fonts are found only
+      after the stylesheet has been parsed, which is a round trip the first paint
+      waits on.
+
+      Latin only, deliberately. The document is served in English, so the Cyrillic
+      subsets are what a language switch needs rather than what the first paint
+      needs, and preloading all four would push 27 KB at every visitor to buy
+      nothing for most of them. `crossorigin` is required even for a same-origin
+      font: fonts are fetched in CORS mode, and without it the preload is
+      discarded and the file fetched a second time.
+    -->
+    <link
+      rel="preload"
+      href="./fonts/rubik-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="./fonts/jetbrains-mono-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <style>
       /* The CSS stays inline and the fonts sit beside this file: the page asks
          nothing of a third party, so no request of ours can hint to anyone else
@@ -169,9 +196,16 @@
         box-sizing: border-box;
       }
 
+      /* The insets are folded into the padding with max() rather than added to
+         it: on a device without a notch env() resolves to 0 and the clamp wins, so
+         the ordinary case is unchanged and a landscape iPhone stops printing the
+         first character of a coordinate under the camera housing. */
       body {
         margin: 0;
-        padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 4vw, 2.5rem);
+        padding-block: clamp(1.5rem, 4vw, 3rem)
+          max(clamp(1.5rem, 4vw, 3rem), env(safe-area-inset-bottom));
+        padding-inline: max(clamp(1rem, 4vw, 2.5rem), env(safe-area-inset-left))
+          max(clamp(1rem, 4vw, 2.5rem), env(safe-area-inset-right));
         background: var(--paper);
         color: var(--ink);
         font-family: 'Rubik', system-ui, -apple-system, sans-serif;
@@ -199,7 +233,12 @@
         z-index: 1;
       }
 
-      main:focus {
+      /* The ring is dropped only for a focus that was not asked for by keyboard.
+         `main` is the skip link's target and carries tabindex="-1", so a pointer
+         landing in it should stay quiet — but the visitor who *used* the skip link
+         has to see where they arrived, and a bare `main:focus` rule outranks
+         `:focus-visible` on specificity and silently took that away. */
+      main:focus:not(:focus-visible) {
         outline: none;
       }
 
@@ -398,6 +437,9 @@
         outline-offset: 2px;
       }
 
+      /* Sits with the buttons that produce it, in the same department as the field
+         it describes: an error announced at the other end of the page is an error a
+         reader with magnification never sees. */
       #status {
         min-height: 1.6em;
         font-family: 'JetBrains Mono', ui-monospace, monospace;
@@ -442,12 +484,6 @@
 
       footer a {
         color: inherit;
-      }
-
-      .hint {
-        color: var(--ink-soft);
-        font-size: 0.85rem;
-        margin: 0.3rem 0 0;
       }
 
       /* One column on a narrow screen: the indent that marks a department costs
@@ -518,6 +554,7 @@
                 name="sgf"
                 spellcheck="false"
                 autocomplete="off"
+                translate="no"
                 aria-describedby="status"
                 placeholder="(;GM[1]FF[4]SZ[19];B[pd];W[dp]…)"
               ></textarea>
@@ -534,6 +571,14 @@
                 Copy the Text
               </button>
             </div>
+
+            <!--
+              The field's own description, so it stays in the field's department
+              rather than beside the result. role="status" carries an implicit
+              polite live region, which is what announces a conversion or a failure
+              without interrupting whatever is being read.
+            -->
+            <p id="status" role="status"></p>
           </form>
         </section>
 
@@ -544,7 +589,6 @@
           </div>
 
           <div>
-            <p id="status" role="status"></p>
             <pre
               id="result"
               tabindex="0"

@@ -246,6 +246,22 @@ form.addEventListener('submit', (event) => {
 });
 
 /**
+ * A record in the field is unsaved work: it was pasted or read from a file, this
+ * page stores nothing, and a reload loses it with no way back.
+ *
+ * Guarded on the field being non-empty, which keeps the dialog away from the
+ * visitor who has converted nothing and is simply leaving. The browser decides
+ * the wording — no message of ours is shown, and none is worth writing.
+ */
+window.addEventListener('beforeunload', (event) => {
+  if (input.value.trim() === '') {
+    return;
+  }
+
+  event.preventDefault();
+});
+
+/**
  * The chosen language lives in the URL, so a link can open the page in either
  * language — useful for sending someone straight to the version they read.
  */
