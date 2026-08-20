@@ -54,9 +54,13 @@ Languages: `ru` (default), `en`.
 
 ### Web page
 
-GitHub Pages serves the page in English, and the browser translates it. The page
-takes the language from an ordered chain, stopping at the first source that names
-one it supports:
+The page is live at <https://sgf.rudenko.live/>. To hand someone the Russian
+version, send them <https://sgf.rudenko.live/?lang=ru>: it opens in Russian for
+them whatever they last chose.
+
+GitHub Pages serves the document in English, and the page's own script rewrites
+it into the chosen language. That language comes from an ordered chain, stopping
+at the first source that names one it supports:
 
 1. `?lang=` in the URL, so `…/?lang=ru` opens in Russian for anyone you send it
    to, whatever they last chose;
