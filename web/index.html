@@ -16,8 +16,8 @@
       name="description"
       content="Converts an SGF Go game record into plain text a screen reader can speak, with the coordinates of every move and the stones it captures."
     />
-    <meta name="theme-color" content="#f4f1ea" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#171614" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#101215" media="(prefers-color-scheme: dark)" />
 
     <!--
       The link-preview tags. main.ts rewrites the translatable ones and rebuilds
@@ -58,35 +58,108 @@
     <link rel="alternate" hreflang="ru" href="https://sgf.rudenko.live/?lang=ru" />
     <link rel="alternate" hreflang="x-default" href="https://sgf.rudenko.live/" />
     <style>
-      /* Everything is inline: the page must make no network request, so that
-         an unpublished game never leaves the browser. */
-      :root {
-        /* Tells the browser to render its own widgets — scrollbars, the native
-           select, form controls — in the matching scheme. Without it they stay
-           light on the dark background, since our variables only paint what we
-           draw ourselves. */
-        color-scheme: light dark;
+      /* The CSS stays inline and the fonts sit beside this file: the page asks
+         nothing of a third party, so no request of ours can hint to anyone else
+         that a game is being read here. The four font files are the only
+         subresources, they are served from this origin, and they carry nothing
+         about the game.
 
-        --paper: #f4f1ea;
-        --paper-sunk: #ebe6db;
-        --ink: #1c1a17;
-        --ink-soft: #55504a;
-        --rule: #cdc5b4;
-        --seal: #8c2f22;
-        --seal-soft: #b8503f;
-        --focus: #1c5d99;
+         Two faces, each a variable font, so one file per alphabet covers every
+         weight the page uses. Rubik sets the page. JetBrains Mono sets the game
+         record, where a fixed advance width is not a style but a requirement:
+         coordinates have to stack into a column the eye can run down. */
+      @font-face {
+        font-family: 'Rubik';
+        font-style: normal;
+        font-weight: 300 900;
+        font-display: swap;
+        src: url('./fonts/rubik-latin.woff2') format('woff2');
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+          U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+          U+2212, U+2215, U+FEFF, U+FFFD;
       }
 
-      @media (prefers-color-scheme: dark) {
+      @font-face {
+        font-family: 'Rubik';
+        font-style: normal;
+        font-weight: 300 900;
+        font-display: swap;
+        src: url('./fonts/rubik-cyrillic.woff2') format('woff2');
+        unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+      }
+
+      @font-face {
+        font-family: 'JetBrains Mono';
+        font-style: normal;
+        font-weight: 100 800;
+        font-display: swap;
+        src: url('./fonts/jetbrains-mono-latin.woff2') format('woff2');
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+          U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+          U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+
+      @font-face {
+        font-family: 'JetBrains Mono';
+        font-style: normal;
+        font-weight: 100 800;
+        font-display: swap;
+        src: url('./fonts/jetbrains-mono-cyrillic.woff2') format('woff2');
+        unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+      }
+
+      /* Dark by design rather than by preference: this page is drawn as the night
+         edition, and the light scheme below is a true inversion of it rather than
+         an afterthought.
+
+         Two tokens here are deliberately not one. `--accent` is identity and
+         `--alert` is failure: while a palette's accent happens to be red the two
+         coincide by luck, and an error reads as an error only by coincidence. The
+         accent is a herb green, so one shared token would have announced a failed
+         conversion in the calm voice of the site's own colour.
+
+         `--rule` draws lines that divide; `--edge` draws the border that says
+         where a text field begins. WCAG asks 3:1 of the second and nothing of the
+         first, and a single value pitched at both is either too heavy for a
+         divider or too faint for a control. `--edge` clears 3:1 against the page
+         and against the field's own fill, because a border has two sides and a
+         value checked against one of them is only half checked. */
+      :root {
+        color-scheme: dark light;
+
+        /* The width of the left track, shared by both departments. One value, so
+           the numerals and the work they label cannot drift apart. */
+        --col: 11.5rem;
+
+        --paper: #101215;
+        --paper-sunk: #191c21;
+        --ink: #e9eaee;
+        --ink-soft: #9a9fa8;
+        --rule: #272b31;
+        --edge: #6b6f78;
+        --accent: #a9c257;
+        --accent-hover: #c2d879;
+        --accent-ink: #101215;
+        --alert: #ef8d86;
+        --focus: #e9eaee;
+      }
+
+      /* The accent inverts rather than lightens. A green bright enough to carry a
+         dark page leaves white-on-green at about 2:1, so on paper it becomes a
+         deep olive and the label on it turns white. */
+      @media (prefers-color-scheme: light) {
         :root {
-          --paper: #171614;
-          --paper-sunk: #201e1b;
-          --ink: #ece7dc;
-          --ink-soft: #a8a196;
-          --rule: #3b3733;
-          --seal: #d2705c;
-          --seal-soft: #b8503f;
-          --focus: #7ab8f5;
+          --paper: #fafafa;
+          --paper-sunk: #f0f1f3;
+          --ink: #16181c;
+          --ink-soft: #565a62;
+          --rule: #dcdee2;
+          --edge: #7b7e86;
+          --accent: #4c5c1a;
+          --accent-hover: #384413;
+          --accent-ink: #ffffff;
+          --alert: #a02016;
+          --focus: #16181c;
         }
       }
 
@@ -98,13 +171,13 @@
 
       body {
         margin: 0;
-        padding: clamp(1.5rem, 5vw, 4rem) clamp(1rem, 5vw, 3rem);
+        padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 4vw, 2.5rem);
         background: var(--paper);
         color: var(--ink);
-        font-family: ui-serif, Georgia, 'Times New Roman', serif;
-        font-size: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+        font-family: 'Rubik', system-ui, -apple-system, sans-serif;
+        font-size: clamp(0.95rem, 0.92rem + 0.15vw, 1.05rem);
         line-height: 1.6;
-        -webkit-tap-highlight-color: rgb(28 93 153 / 0.2);
+        -webkit-tap-highlight-color: rgb(169 194 87 / 0.2);
       }
 
       /* Off-screen until focused, so a keyboard user can jump past the header
@@ -116,8 +189,8 @@
         background: var(--paper);
         color: var(--ink);
         padding: 0.6rem 1rem;
-        border: 1px solid var(--seal);
-        border-radius: 2px;
+        border: 1px solid var(--accent);
+        border-radius: 3px;
       }
 
       .skip-link:focus {
@@ -131,82 +204,38 @@
       }
 
       .sheet {
-        max-width: 46rem;
+        max-width: 56rem;
         margin: 0 auto;
       }
 
-      header {
-        border-bottom: 1px solid var(--rule);
-        padding-bottom: 1.25rem;
-        margin-bottom: 2rem;
-      }
-
-      h1 {
-        font-size: clamp(1.75rem, 1.4rem + 1.6vw, 2.5rem);
-        letter-spacing: -0.02em;
-        margin: 0 0 0.35rem;
-        text-wrap: balance;
-      }
-
-      h1 .mark {
-        color: var(--seal);
-      }
-
-      h2 {
-        font-size: 1.125rem;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--ink-soft);
-        margin: 0 0 0.75rem;
-      }
-
-      .tagline {
-        margin: 0;
-        color: var(--ink-soft);
-        max-width: 34rem;
-      }
-
-      .field {
-        margin-bottom: 1.5rem;
-      }
-
-      label {
-        display: block;
-        margin-bottom: 0.4rem;
-        font-weight: 600;
-      }
-
-      textarea,
-      select,
-      input[type='file'] {
-        width: 100%;
-        font-family: inherit;
-        font-size: 1rem;
-        color: var(--ink);
-        background: var(--paper-sunk);
-        border: 1px solid var(--rule);
-        border-radius: 2px;
-        padding: 0.7rem 0.8rem;
-      }
-
-      textarea {
-        font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
-        min-height: 9rem;
-        resize: vertical;
-      }
-
-      /* The name of the page and the language chooser share a line, and wrap onto
-         two when there is no room, rather than the chooser shrinking to nothing. */
+      /* The masthead: the name holds the left end of the line, the language
+         chooser the right. Aligned on their baselines rather than centred, so the
+         small control sits on the line the name is written on instead of floating
+         in the middle of its height. */
       .masthead {
         display: flex;
         flex-wrap: wrap;
-        align-items: baseline;
         justify-content: space-between;
+        align-items: baseline;
         gap: 0.5rem 1.5rem;
+        padding-bottom: 0.9rem;
+        border-bottom: 1px solid var(--rule);
       }
 
-      /* Label beside the control, not above it: this is one compact chooser in the
-         masthead, and stacking it would make it look like another form field —
+      h1 {
+        font-size: clamp(1.8rem, 1.3rem + 1.9vw, 2.5rem);
+        font-weight: 700;
+        line-height: 1.05;
+        letter-spacing: -0.035em;
+        margin: 0;
+      }
+
+      h1 .mark {
+        color: var(--accent);
+      }
+
+      /* Label beside the control, not above it: this is one compact chooser in
+         the masthead, and stacking it would make it look like another form field —
          which is exactly the impression moving it here is meant to undo. */
       .language {
         display: flex;
@@ -216,46 +245,135 @@
 
       .language label {
         margin: 0;
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 0.74rem;
         font-weight: 400;
-        font-size: 0.9rem;
+        letter-spacing: 0.04em;
         color: var(--ink-soft);
         white-space: nowrap;
       }
 
+      /* The opening lines start at the left edge, on the same kerb as the name
+         above them, so the page opens on one line rather than two. The grid picks
+         up below, where the work is: the indent is what marks a department. */
+      .intro {
+        margin: 1.75rem 0 0;
+      }
+
+      .subtitle {
+        font-size: clamp(1.05rem, 1rem + 0.5vw, 1.3rem);
+        font-weight: 500;
+        line-height: 1.35;
+        margin: 0;
+        text-wrap: balance;
+      }
+
+      .tagline {
+        font-size: 1.05rem;
+        line-height: 1.55;
+        color: var(--ink-soft);
+        max-width: 34rem;
+        margin: 0.55rem 0 0;
+      }
+
+      /* Every department is one row: the index and its heading on the left, the
+         work on the right, a rule closing it off. */
+      .row {
+        display: grid;
+        grid-template-columns: var(--col) 1fr;
+        gap: 1rem 2rem;
+        padding: 1.6rem 0;
+        border-top: 1px solid var(--rule);
+      }
+
+      .row:first-of-type {
+        margin-top: 1.6rem;
+      }
+
+      .num {
+        display: block;
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: var(--accent);
+      }
+
+      /* Small on purpose: the grid already announces a department, so the heading
+         does not have to shout. A screen reader reads it as a heading whatever
+         size it is drawn at, which is the half that matters here. */
+      h2 {
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 0.75rem;
+        font-weight: 400;
+        letter-spacing: 0.06em;
+        color: var(--ink-soft);
+        margin: 0.3rem 0 0;
+      }
+
+      .field {
+        margin-bottom: 1.25rem;
+      }
+
+      label {
+        display: block;
+        font-size: 0.92rem;
+        font-weight: 500;
+        margin-bottom: 0.45rem;
+      }
+
+      textarea,
+      select,
+      input[type='file'] {
+        width: 100%;
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 0.9rem;
+        color: var(--ink);
+        background: var(--paper-sunk);
+        border: 1px solid var(--edge);
+        border-radius: 3px;
+        padding: 0.75rem 0.85rem;
+      }
+
+      textarea {
+        min-height: 8rem;
+        resize: vertical;
+      }
+
       .language select {
         width: auto;
-        padding: 0.35rem 0.5rem;
-        font-size: 0.95rem;
+        padding: 0.2rem 0.4rem;
+        font-size: 0.78rem;
       }
 
       .actions {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.75rem;
-        margin-bottom: 2.5rem;
+        gap: 0.6rem;
+        margin-top: 0.9rem;
       }
 
       button {
         font-family: inherit;
-        font-size: 1rem;
-        padding: 0.6rem 1.4rem;
-        border-radius: 2px;
-        border: 1px solid var(--seal);
-        background: var(--seal);
-        color: var(--paper);
+        font-size: 0.92rem;
+        font-weight: 500;
+        padding: 0.6rem 1.25rem;
+        border: 1px solid var(--accent);
+        border-radius: 3px;
+        background: var(--accent);
+        color: var(--accent-ink);
         cursor: pointer;
         touch-action: manipulation;
       }
 
       button.secondary {
         background: transparent;
-        color: var(--seal);
+        color: var(--accent);
       }
 
       button:hover:not([aria-disabled='true']) {
-        background: var(--seal-soft);
-        border-color: var(--seal-soft);
-        color: var(--paper);
+        background: var(--accent-hover);
+        border-color: var(--accent-hover);
+        color: var(--accent-ink);
       }
 
       /* aria-disabled rather than the disabled attribute: a disabled button is
@@ -266,8 +384,15 @@
         cursor: not-allowed;
       }
 
-      /* A visible focus ring matters more here than anywhere else: keyboard
-         is the primary way this page is operated. */
+      /* A visible focus ring matters more here than anywhere else: keyboard is
+         the primary way this page is operated.
+
+         The offset is load-bearing, not decoration. Ink against the accent is
+         only about 1.7:1 — on its own the ring would all but vanish on the button
+         it is meant to mark. The 2px gap puts the page between the two, and the
+         page against ink is 15.6:1 at worst, so the ring is read against the gap
+         rather than against the fill. Remove the offset and the ring quietly stops working
+         for exactly the users this page exists for. */
       :focus-visible {
         outline: 3px solid var(--focus);
         outline-offset: 2px;
@@ -275,42 +400,44 @@
 
       #status {
         min-height: 1.6em;
-        margin: 0 0 0.75rem;
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 0.8rem;
         color: var(--ink-soft);
+        margin: 0 0 0.7rem;
       }
 
       #status[data-tone='error'] {
-        color: var(--seal);
-        font-weight: 600;
+        color: var(--alert);
+        font-weight: 500;
       }
 
       #result {
-        font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
-        font-size: 0.95rem;
-        line-height: 1.75;
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 0.88rem;
+        line-height: 1.8;
         white-space: pre-wrap;
         overflow-wrap: break-word;
         background: var(--paper-sunk);
         border: 1px solid var(--rule);
-        border-left: 3px solid var(--seal);
-        border-radius: 2px;
+        border-left: 3px solid var(--accent);
+        border-radius: 3px;
         margin: 0;
-        padding: 1rem 1.1rem;
+        padding: 0.9rem 1rem;
         min-height: 4rem;
       }
 
       #result:empty::before {
         content: attr(data-placeholder);
         color: var(--ink-soft);
-        font-family: ui-serif, Georgia, serif;
+        font-family: 'Rubik', system-ui, sans-serif;
       }
 
       footer {
-        margin-top: 3rem;
-        padding-top: 1.25rem;
+        margin-top: 1.75rem;
+        padding-top: 1rem;
         border-top: 1px solid var(--rule);
         color: var(--ink-soft);
-        font-size: 0.9rem;
+        font-size: 0.85rem;
       }
 
       footer a {
@@ -319,84 +446,113 @@
 
       .hint {
         color: var(--ink-soft);
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         margin: 0.3rem 0 0;
+      }
+
+      /* One column on a narrow screen: the indent that marks a department costs
+         more room than it earns when there is none to spare. */
+      @media (max-width: 40rem) {
+        .row {
+          grid-template-columns: 1fr;
+          gap: 0.5rem;
+        }
       }
     </style>
   </head>
   <body>
     <a class="skip-link" href="#main" id="skip-link">Skip to the Converter</a>
     <div class="sheet">
-      <header>
-        <div class="masthead">
-          <h1>sgf<span class="mark">2</span>text</h1>
+      <header class="masthead">
+        <h1>sgf<span class="mark">2</span>text</h1>
 
-          <!--
-            The language of the page, not of one conversion: it rewrites the title,
-            the description, the link-preview tags and every label on the page. So
-            it belongs beside the name of the site rather than among the fields of
-            the form, where it read as a per-conversion setting.
+        <!--
+          The language of the page, not of one conversion: it rewrites the title,
+          the description, the link-preview tags and every label on the page. So
+          it belongs beside the name of the site rather than among the fields of
+          the form, where it read as a per-conversion setting.
 
-            A native select on purpose. It is the most accessible dropdown there
-            is — every screen reader knows it, it works from the keyboard without
-            any code of ours, and a phone opens it as the system picker. Each option
-            is named in its own language and marked with `lang`, so the indicator of
-            the current language is the language's own name, read in its own voice.
-            No flags: a flag names a country, not a language, and an indicator that
-            is purely visual tells the reader this page is for precisely nothing.
-          -->
-          <div class="language">
-            <label for="lang" id="lang-label">Page language</label>
-            <select id="lang" name="lang">
-              <option value="en" lang="en">English</option>
-              <option value="ru" lang="ru">Русский</option>
-            </select>
-          </div>
+          A native select on purpose. It is the most accessible dropdown there
+          is — every screen reader knows it, it works from the keyboard without
+          any code of ours, and a phone opens it as the system picker. Each option
+          is named in its own language and marked with `lang`, so the indicator of
+          the current language is the language's own name, read in its own voice.
+          No flags: a flag names a country, not a language, and an indicator that
+          is purely visual tells the reader this page is for precisely nothing.
+        -->
+        <div class="language">
+          <label for="lang" id="lang-label">Page language</label>
+          <select id="lang" name="lang">
+            <option value="en" lang="en">English</option>
+            <option value="ru" lang="ru">Русский</option>
+          </select>
         </div>
+      </header>
 
+      <div class="intro">
+        <p class="subtitle" id="subtitle">A game record, written out as text</p>
         <p class="tagline" id="tagline">
           Turns an SGF Go game record into text a screen reader can read out: move by move,
           with coordinates and captured stones.
         </p>
-      </header>
+      </div>
 
       <main id="main" tabindex="-1">
-        <form id="form" novalidate>
-          <div class="field">
-            <label for="sgf" id="sgf-label">Paste an SGF game record</label>
-            <textarea
-              id="sgf"
-              name="sgf"
-              spellcheck="false"
-              autocomplete="off"
-              aria-describedby="status"
-              placeholder="(;GM[1]FF[4]SZ[19];B[pd];W[dp]…)"
-            ></textarea>
+        <!--
+          The numerals are decoration, and they are hidden from the accessibility
+          tree: read aloud, "01" ahead of "Input" is noise. The heading beside each
+          one carries the meaning, and both headings are translated like every
+          other string on the page.
+        -->
+        <section class="row" aria-labelledby="input-heading">
+          <div>
+            <span class="num" aria-hidden="true">01</span>
+            <h2 id="input-heading">Input</h2>
           </div>
 
-          <div class="field">
-            <label for="file" id="file-label">Or choose an .sgf file</label>
-            <input id="file" name="file" type="file" accept=".sgf,application/x-go-sgf" />
+          <form id="form" novalidate>
+            <div class="field">
+              <label for="sgf" id="sgf-label">Paste an SGF game record</label>
+              <textarea
+                id="sgf"
+                name="sgf"
+                spellcheck="false"
+                autocomplete="off"
+                aria-describedby="status"
+                placeholder="(;GM[1]FF[4]SZ[19];B[pd];W[dp]…)"
+              ></textarea>
+            </div>
+
+            <div class="field">
+              <label for="file" id="file-label">Or choose an .sgf file</label>
+              <input id="file" name="file" type="file" accept=".sgf,application/x-go-sgf" />
+            </div>
+
+            <div class="actions">
+              <button type="submit" id="convert">Convert</button>
+              <button type="button" id="copy" class="secondary" aria-disabled="true">
+                Copy the Text
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <section class="row" aria-labelledby="result-heading">
+          <div>
+            <span class="num" aria-hidden="true">02</span>
+            <h2 id="result-heading">Result</h2>
           </div>
 
-          <div class="actions">
-            <button type="submit" id="convert">Convert</button>
-            <button type="button" id="copy" class="secondary" aria-disabled="true">
-              Copy the Text
-            </button>
+          <div>
+            <p id="status" role="status"></p>
+            <pre
+              id="result"
+              tabindex="0"
+              aria-labelledby="result-heading"
+              translate="no"
+              data-placeholder="The game record will appear here."
+            ></pre>
           </div>
-        </form>
-
-        <section aria-labelledby="result-heading">
-          <h2 id="result-heading">Result</h2>
-          <p id="status" role="status"></p>
-          <pre
-            id="result"
-            tabindex="0"
-            aria-labelledby="result-heading"
-            translate="no"
-            data-placeholder="The game record will appear here."
-          ></pre>
         </section>
       </main>
 

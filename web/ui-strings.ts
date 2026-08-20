@@ -15,12 +15,25 @@ export type UiStrings = {
   description: string;
   ogLocale: string;
   skipLink: string;
+  /**
+   * A line between the name and the tagline: it says what the page makes, where
+   * the name only says what it is called. Kept in this table rather than left in
+   * the HTML, because the HTML is served in one language and this line has to
+   * follow the language control like everything else on the page.
+   */
+  subtitle: string;
   tagline: string;
   sgfLabel: string;
   fileLabel: string;
   langLabel: string;
   convert: string;
   copy: string;
+  /**
+    * The two departments are headed rather than merely numbered: the numerals beside
+    * them are decoration a screen reader is better off not reading, so the heading
+    * carries the meaning and the numeral is hidden from the accessibility tree.
+    */
+  inputHeading: string;
   resultHeading: string;
   placeholder: string;
   privacy: string;
@@ -67,6 +80,7 @@ const CATALOGUE = {
       'Converts an SGF Go game record into plain text a screen reader can speak, with the coordinates of every move and the stones it captures.',
     ogLocale: 'en_US',
     skipLink: 'Skip to the Converter',
+    subtitle: 'A game record, written out as text',
     tagline:
       'Turns an SGF Go game record into text a screen reader can read out: move by move, with coordinates and captured stones.',
     sgfLabel: 'Paste an SGF game record',
@@ -74,6 +88,7 @@ const CATALOGUE = {
     langLabel: 'Page language',
     convert: 'Convert',
     copy: 'Copy the Text',
+    inputHeading: 'Input',
     resultHeading: 'Result',
     placeholder: 'The game record will appear here.',
     privacy: 'The game is converted in your browser and is never sent anywhere.',
@@ -103,6 +118,7 @@ const CATALOGUE = {
       'Преобразует SGF-запись партии Го в текст, который читает скринридер: координаты каждого хода и снятые им камни.',
     ogLocale: 'ru_RU',
     skipLink: 'Перейти к конвертеру',
+    subtitle: 'Запись партии — текстом',
     tagline:
       'Превращает SGF-запись партии Го в текст, который читает скринридер: ход за ходом, с координатами и снятыми камнями.',
     sgfLabel: 'Вставьте SGF-запись партии',
@@ -110,6 +126,7 @@ const CATALOGUE = {
     langLabel: 'Язык страницы',
     convert: 'Преобразовать',
     copy: 'Скопировать текст',
+    inputHeading: 'Ввод',
     resultHeading: 'Результат',
     placeholder: 'Здесь появится запись партии.',
     privacy: 'Партия обрабатывается прямо в браузере и никуда не отправляется.',

@@ -200,10 +200,12 @@ const applyVisible = (strings: UiStrings): void => {
   document.title = strings.title;
 
   need('#skip-link').textContent = strings.skipLink;
+  need('#subtitle').textContent = strings.subtitle;
   need('#tagline').textContent = strings.tagline;
   need('#sgf-label').textContent = strings.sgfLabel;
   need('#file-label').textContent = strings.fileLabel;
   need('#lang-label').textContent = strings.langLabel;
+  need('#input-heading').textContent = strings.inputHeading;
   need('#result-heading').textContent = strings.resultHeading;
   need('#privacy').textContent = strings.privacy;
   applyCredits(strings);
