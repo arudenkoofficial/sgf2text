@@ -3,8 +3,10 @@
 This one needs no code and no deploy, and it is the only item on the list that is
 costing a visitor something right now. It goes first for that reason.
 
-- [ ] 1.1 Turn on **Enforce HTTPS** in the repository's Pages settings, so a plain `http` arrival cannot silently drop the `Secure` language cookie.
-- [ ] 1.2 Verify with `curl -sI http://sgf.rudenko.live/` that the answer is a redirect to `https` rather than `200`, and with `curl -sI 'https://arudenkoofficial.github.io/sgf2text/?lang=ru'` that the redirect chain ends on `https` and still carries `lang=ru`.
+- [x] 1.1 Turn on **Enforce HTTPS** in the repository's Pages settings, so a plain `http` arrival cannot silently drop the `Secure` language cookie. Done. The Pages API now reports `https_enforced: true` and gives the site's address as `https://sgf.rudenko.live/`, where it previously gave `http://`. The certificate was already `approved`, so nothing had to be waited for.
+- [x] 1.2 Verify with `curl -sI http://sgf.rudenko.live/` that the answer is a redirect to `https` rather than `200`, and with `curl -sI 'https://arudenkoofficial.github.io/sgf2text/?lang=ru'` that the redirect chain ends on `https` and still carries `lang=ru`. Both hold: the bare `http` address answers `301` to `https`, and the old link now runs `301 → 301 → 200` with `lang=ru` intact through every hop.
+
+  Verified by walking the visitor's path rather than only reading headers, in a browser context with no cookie of its own: following the old `github.io` link with `?lang=ru` lands on `https`, the page comes up Russian, and the cookie is stored — where before the landing was `http` and the browser dropped it without a word. Returning afterwards to the bare `https://sgf.rudenko.live/` gives a Russian page and an address bar that regains `?lang=ru`. That is the promise the previous change made, working for the first time on the live site.
 
 ## 2. Record the published address
 
