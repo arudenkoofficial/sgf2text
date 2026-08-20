@@ -1,20 +1,82 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  # sgf2text
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  Converts a Go game record from SGF into plain text that a screen
+  reader can speak. This is an accessibility tool: the primary user is
+  a blind player who listens to the text through VoiceOver/NVDA and
+  replays the game on a tactile board.
+
+  ## Prior art
+
+  The only existing equivalent is https://aigo.tokyo/sgf-txt by the
+  Japan Go Association for the Visually Impaired. Its logic is open
+  (client-side sgf2txt.js) and has been analysed: it parses SGF with
+  split(';') and indexOf(). Verified by running it — it throws on a
+  pass `B[]`, throws on a node holding only a comment `C[]`, silently
+  merges variation branches into one linear game, drops the result
+  when a player name contains the letters of another property
+  (`PB[FREDDY]` — indexOf finds 'RE' inside the name), and never
+  prints the coordinates of handicap stones. We reuse its output
+  structure, which is proven with real blind users, but not its code.
+
+  ## Stack
+
+  - TypeScript, strict. Erasable syntax only: Node runs .ts natively,
+    so `enum`, `namespace` and constructor parameter properties
+    (`constructor(private x)`) are FORBIDDEN — they require code
+    transformation rather than type stripping.
+  - Relative imports carry the `.ts` extension; `tsc` rewrites them
+    via `rewriteRelativeImportExtensions`.
+  - ESM (`"type": "module"`), tsconfig `nodenext`.
+  - Node: developed on 26.7.0 (`.nvmrc`), `engines: ">=24"` so the
+    package installs on the current LTS (Krypton).
+  - Tests: built-in `node --test`. No vitest, no jest.
+  - Core dependencies: `@sabaki/sgf` (parses SGF into a game tree) and
+    `@sabaki/go-board` (replays the game, removes groups without
+    liberties). Both MIT.
+  - Build: `tsc` to `dist/` for the npm package; `esbuild` bundles the
+    web page. No build step during development.
+  - Publishing: GitHub Pages via GitHub Actions. Public repository,
+    MIT licence.
+
+  ## Domain
+
+  - SGF coordinates are `[xy]`, letters a-s, counted from the top-left
+    corner.
+  - Western notation: columns `A-T` WITHOUT the letter `I`, rows
+    counted bottom-up (`row = size - y`). This is what the user
+    already hears from the existing OGS userscript
+    (`ogs-voice-assistant`), so the converter must match it — a
+    mismatch would make recorded games vertically mirrored relative to
+    live play.
+  - Japanese notation, as used by aigo.tokyo and therefore familiar to
+    Japanese blind players: column as an arabic number counted from the
+    left edge, row as a kanji numeral counted from the top edge, joined
+    by `の` (so `pd` reads `16の四`). A locale is therefore not just a
+    dictionary of words but also a coordinate system:
+    `Locale = { strings, coordinateSystem }`.
+  - Captures cannot be derived by parsing alone: the game must be
+    replayed under Go rules to find groups left without liberties.
+
+  ## Code conventions
+
+  - An `if` body is always wrapped in braces, even for a lone `return`.
+  - The core knows nothing about the DOM: the web page, the CLI and,
+    later, an OGS userscript all reuse it.
+  - TDD: write the test that reproduces a defect of the Japanese
+    converter first, then implement.
+  - Source code, comments, docs and commit messages are in English.
+
+  ## Privacy
+
+  This project grew out of private correspondence with a specific
+  blind player. Her name, contact details and quotes from that
+  correspondence must never appear in the public repository.
+
+rules:
+  proposal:
+    - State the benefit from the blind player's point of view, not the developer's
+  tasks:
+    - Every task starts with a failing test (TDD)
