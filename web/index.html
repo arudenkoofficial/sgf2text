@@ -1,15 +1,67 @@
 <!doctype html>
-<html lang="ru">
+<!--
+  Served in English, and coherent in it: the metadata, this lang attribute and
+  every visible string below name the same language. Russian is applied by
+  main.ts when a link, the cookie or the language control asks for it. A crawler
+  that runs no JavaScript is given one language signal rather than two
+  contradictory ones, and a screen reader reading the page before the module
+  executes does not sound out one language's words with another's phonemes.
+-->
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>sgf2text — запись партии Го текстом</title>
+    <title>sgf2text — a Go game as readable text</title>
     <meta
       name="description"
-      content="Преобразует SGF-запись партии Го в текст, который читает скринридер."
+      content="Converts an SGF Go game record into plain text a screen reader can speak, with the coordinates of every move and the stones it captures."
     />
     <meta name="theme-color" content="#f4f1ea" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#171614" media="(prefers-color-scheme: dark)" />
+
+    <!--
+      The link-preview tags. main.ts rewrites the translatable ones, and rebuilds
+      every address below from `location`, so a repository rename or a custom
+      domain needs no edit here. og:title and og:description reuse the title and
+      the description rather than holding their own copies, which would be two
+      more chances to drift. No twitter:title or twitter:description: X falls
+      back to the Open Graph values, so adding them would create synchronisation
+      work and nothing else.
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="sgf2text" />
+    <meta property="og:title" content="sgf2text — a Go game as readable text" />
+    <meta
+      property="og:description"
+      content="Converts an SGF Go game record into plain text a screen reader can speak, with the coordinates of every move and the stones it captures."
+    />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content="https://arudenkoofficial.github.io/sgf2text/?lang=en" />
+    <meta name="twitter:card" content="summary" />
+
+    <!--
+      Each language canonicalises to its own address so the two are read as
+      translations rather than duplicates. x-default is the bare URL, which serves
+      the floor language to anyone the other alternates do not cover — and since
+      the resolution chain also ends in English, what x-default promises and what
+      that URL delivers are the same thing.
+    -->
+    <link rel="canonical" href="https://arudenkoofficial.github.io/sgf2text/?lang=en" />
+    <link
+      rel="alternate"
+      hreflang="en"
+      href="https://arudenkoofficial.github.io/sgf2text/?lang=en"
+    />
+    <link
+      rel="alternate"
+      hreflang="ru"
+      href="https://arudenkoofficial.github.io/sgf2text/?lang=ru"
+    />
+    <link
+      rel="alternate"
+      hreflang="x-default"
+      href="https://arudenkoofficial.github.io/sgf2text/"
+    />
     <style>
       /* Everything is inline: the page must make no network request, so that
          an unpublished game never leaves the browser. */
@@ -148,15 +200,37 @@
         resize: vertical;
       }
 
-      .row {
+      /* The name of the page and the language chooser share a line, and wrap onto
+         two when there is no room, rather than the chooser shrinking to nothing. */
+      .masthead {
         display: flex;
         flex-wrap: wrap;
-        gap: 1.5rem;
-        margin-bottom: 1.5rem;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 0.5rem 1.5rem;
       }
 
-      .row > * {
-        flex: 1 1 14rem;
+      /* Label beside the control, not above it: this is one compact chooser in the
+         masthead, and stacking it would make it look like another form field —
+         which is exactly the impression moving it here is meant to undo. */
+      .language {
+        display: flex;
+        align-items: baseline;
+        gap: 0.5rem;
+      }
+
+      .language label {
+        margin: 0;
+        font-weight: 400;
+        font-size: 0.9rem;
+        color: var(--ink-soft);
+        white-space: nowrap;
+      }
+
+      .language select {
+        width: auto;
+        padding: 0.35rem 0.5rem;
+        font-size: 0.95rem;
       }
 
       .actions {
@@ -256,20 +330,45 @@
     </style>
   </head>
   <body>
-    <a class="skip-link" href="#main" id="skip-link">Перейти к конвертеру</a>
+    <a class="skip-link" href="#main" id="skip-link">Skip to the Converter</a>
     <div class="sheet">
       <header>
-        <h1>sgf<span class="mark">2</span>text</h1>
+        <div class="masthead">
+          <h1>sgf<span class="mark">2</span>text</h1>
+
+          <!--
+            The language of the page, not of one conversion: it rewrites the title,
+            the description, the link-preview tags and every label on the page. So
+            it belongs beside the name of the site rather than among the fields of
+            the form, where it read as a per-conversion setting.
+
+            A native select on purpose. It is the most accessible dropdown there
+            is — every screen reader knows it, it works from the keyboard without
+            any code of ours, and a phone opens it as the system picker. Each option
+            is named in its own language and marked with `lang`, so the indicator of
+            the current language is the language's own name, read in its own voice.
+            No flags: a flag names a country, not a language, and an indicator that
+            is purely visual tells the reader this page is for precisely nothing.
+          -->
+          <div class="language">
+            <label for="lang" id="lang-label">Page language</label>
+            <select id="lang" name="lang">
+              <option value="en" lang="en">English</option>
+              <option value="ru" lang="ru">Русский</option>
+            </select>
+          </div>
+        </div>
+
         <p class="tagline" id="tagline">
-          Превращает SGF-запись партии Го в текст, который читает скринридер: ход за ходом,
-          с координатами и снятыми камнями.
+          Turns an SGF Go game record into text a screen reader can read out: move by move,
+          with coordinates and captured stones.
         </p>
       </header>
 
       <main id="main" tabindex="-1">
         <form id="form" novalidate>
           <div class="field">
-            <label for="sgf" id="sgf-label">Вставьте SGF-запись партии</label>
+            <label for="sgf" id="sgf-label">Paste an SGF game record</label>
             <textarea
               id="sgf"
               name="sgf"
@@ -280,48 +379,40 @@
             ></textarea>
           </div>
 
-          <div class="row">
-            <div>
-              <label for="file" id="file-label">Или выберите файл .sgf</label>
-              <input id="file" name="file" type="file" accept=".sgf,application/x-go-sgf" />
-            </div>
-            <div>
-              <label for="lang" id="lang-label">Язык записи</label>
-              <select id="lang" name="lang">
-                <option value="ru">Русский</option>
-                <option value="en">English</option>
-              </select>
-            </div>
+          <div class="field">
+            <label for="file" id="file-label">Or choose an .sgf file</label>
+            <input id="file" name="file" type="file" accept=".sgf,application/x-go-sgf" />
           </div>
 
           <div class="actions">
-            <button type="submit" id="convert">Преобразовать</button>
+            <button type="submit" id="convert">Convert</button>
             <button type="button" id="copy" class="secondary" aria-disabled="true">
-              Скопировать текст
+              Copy the Text
             </button>
           </div>
         </form>
 
         <section aria-labelledby="result-heading">
-          <h2 id="result-heading">Результат</h2>
+          <h2 id="result-heading">Result</h2>
           <p id="status" role="status"></p>
           <pre
             id="result"
             tabindex="0"
             aria-labelledby="result-heading"
             translate="no"
-            data-placeholder="Здесь появится запись партии."
+            data-placeholder="The game record will appear here."
           ></pre>
         </section>
       </main>
 
       <footer>
         <p id="privacy">
-          Партия обрабатывается прямо в браузере и никуда не отправляется.
+          The game is converted in your browser and is never sent anywhere.
         </p>
         <p id="credits">
-          Идея и структура вывода — <a href="https://aigo.tokyo/sgf-txt">aigo.tokyo/sgf-txt</a>,
-          Японская ассоциация Го для незрячих. Исходный код:
+          The idea and the shape of the output come from
+          <a href="https://aigo.tokyo/sgf-txt">aigo.tokyo/sgf-txt</a>, by the Japan Go
+          Association for the Visually Impaired. Source code:
           <a href="https://github.com/arudenkoofficial/sgf2text">github.com/arudenkoofficial/sgf2text</a>.
         </p>
       </footer>
