@@ -34,10 +34,17 @@ jobs:
 
       # Publish only what the page needs. The sources stay in the repository
       # rather than being served alongside it.
+      #
+      # CNAME travels with the artifact so the published site carries the host it
+      # is served on. This deployment is Actions-based, so the custom domain in
+      # repository settings is what actually routes traffic and the file does not
+      # control it — but shipping it keeps the artifact self-describing, and means
+      # a switch back to branch-based publishing does not silently drop the domain.
       - name: Assemble the site
         run: |
           mkdir -p _site
           cp web/index.html _site/
+          cp CNAME _site/
           cp -R web/dist _site/dist
 
       - uses: actions/upload-pages-artifact@v5

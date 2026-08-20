@@ -20,13 +20,20 @@
     <meta name="theme-color" content="#171614" media="(prefers-color-scheme: dark)" />
 
     <!--
-      The link-preview tags. main.ts rewrites the translatable ones, and rebuilds
-      every address below from `location`, so a repository rename or a custom
-      domain needs no edit here. og:title and og:description reuse the title and
-      the description rather than holding their own copies, which would be two
-      more chances to drift. No twitter:title or twitter:description: X falls
-      back to the Open Graph values, so adding them would create synchronisation
-      work and nothing else.
+      The link-preview tags. main.ts rewrites the translatable ones and rebuilds
+      every address below from `location`, which corrects them for a visitor —
+      and for a visitor only. This comment used to say a rename or a custom
+      domain "needs no edit here", and that sentence is why these five addresses
+      spent weeks naming a host the page had already moved off. The audience
+      they exist for runs no JavaScript, so for a crawler and for the messenger
+      building a link preview the literals are the whole answer. They have to be
+      right on their own; the host they name is recorded in CNAME and a test
+      holds the two together.
+
+      og:title and og:description reuse the title and the description rather
+      than holding their own copies, which would be two more chances to drift.
+      No twitter:title or twitter:description: X falls back to the Open Graph
+      values, so adding them would create synchronisation work and nothing else.
     -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="sgf2text" />
@@ -36,7 +43,7 @@
       content="Converts an SGF Go game record into plain text a screen reader can speak, with the coordinates of every move and the stones it captures."
     />
     <meta property="og:locale" content="en_US" />
-    <meta property="og:url" content="https://arudenkoofficial.github.io/sgf2text/?lang=en" />
+    <meta property="og:url" content="https://sgf.rudenko.live/?lang=en" />
     <meta name="twitter:card" content="summary" />
 
     <!--
@@ -46,22 +53,10 @@
       the resolution chain also ends in English, what x-default promises and what
       that URL delivers are the same thing.
     -->
-    <link rel="canonical" href="https://arudenkoofficial.github.io/sgf2text/?lang=en" />
-    <link
-      rel="alternate"
-      hreflang="en"
-      href="https://arudenkoofficial.github.io/sgf2text/?lang=en"
-    />
-    <link
-      rel="alternate"
-      hreflang="ru"
-      href="https://arudenkoofficial.github.io/sgf2text/?lang=ru"
-    />
-    <link
-      rel="alternate"
-      hreflang="x-default"
-      href="https://arudenkoofficial.github.io/sgf2text/"
-    />
+    <link rel="canonical" href="https://sgf.rudenko.live/?lang=en" />
+    <link rel="alternate" hreflang="en" href="https://sgf.rudenko.live/?lang=en" />
+    <link rel="alternate" hreflang="ru" href="https://sgf.rudenko.live/?lang=ru" />
+    <link rel="alternate" hreflang="x-default" href="https://sgf.rudenko.live/" />
     <style>
       /* Everything is inline: the page must make no network request, so that
          an unpublished game never leaves the browser. */
