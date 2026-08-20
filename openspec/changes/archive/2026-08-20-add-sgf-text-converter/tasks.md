@@ -62,4 +62,4 @@
 - [x] 9.1 Add the CI workflow running `node --test` and `tsc --noEmit` on the Node 24 and 26 matrix.
 - [x] 9.2 Add the Pages workflow building `web/` with esbuild and deploying on pushes to the default branch.
 - [x] 9.3 Write `README.md`: what the tool is for, how to use the page and the CLI, the supported languages, the main-line-only limitation, credit to aigo.tokyo as prior art, and a note that no personal data of any user appears in this repository.
-- [ ] 9.4 Push the repository, enable Pages with GitHub Actions as the source, and confirm the published page converts a real game.
+- [x] 9.4 Push the repository, enable Pages with GitHub Actions as the source, and confirm the published page converts a real game.
