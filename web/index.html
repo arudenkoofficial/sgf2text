@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>sgf2text — запись партии Го текстом</title>
+    <meta
+      name="description"
+      content="Преобразует SGF-запись партии Го в текст, который читает скринридер."
+    />
+    <style>
+      /* Everything is inline: the page must make no network request, so that
+         an unpublished game never leaves the browser. */
+      :root {
+        --paper: #f4f1ea;
+        --paper-sunk: #ebe6db;
+        --ink: #1c1a17;
+        --ink-soft: #55504a;
+        --rule: #cdc5b4;
+        --seal: #8c2f22;
+        --seal-soft: #b8503f;
+        --focus: #1c5d99;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --paper: #171614;
+          --paper-sunk: #201e1b;
+          --ink: #ece7dc;
+          --ink-soft: #a8a196;
+          --rule: #3b3733;
+          --seal: #d2705c;
+          --seal-soft: #b8503f;
+          --focus: #7ab8f5;
+        }
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: clamp(1.5rem, 5vw, 4rem) clamp(1rem, 5vw, 3rem);
+        background: var(--paper);
+        color: var(--ink);
+        font-family: ui-serif, Georgia, 'Times New Roman', serif;
+        font-size: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+        line-height: 1.6;
+      }
+
+      .sheet {
+        max-width: 46rem;
+        margin: 0 auto;
+      }
+
+      header {
+        border-bottom: 1px solid var(--rule);
+        padding-bottom: 1.25rem;
+        margin-bottom: 2rem;
+      }
+
+      h1 {
+        font-size: clamp(1.75rem, 1.4rem + 1.6vw, 2.5rem);
+        letter-spacing: -0.02em;
+        margin: 0 0 0.35rem;
+      }
+
+      h1 .mark {
+        color: var(--seal);
+      }
+
+      h2 {
+        font-size: 1.125rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+        margin: 0 0 0.75rem;
+      }
+
+      .tagline {
+        margin: 0;
+        color: var(--ink-soft);
+        max-width: 34rem;
+      }
+
+      .field {
+        margin-bottom: 1.5rem;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 0.4rem;
+        font-weight: 600;
+      }
+
+      textarea,
+      select,
+      input[type='file'] {
+        width: 100%;
+        font-family: inherit;
+        font-size: 1rem;
+        color: var(--ink);
+        background: var(--paper-sunk);
+        border: 1px solid var(--rule);
+        border-radius: 2px;
+        padding: 0.7rem 0.8rem;
+      }
+
+      textarea {
+        font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
+        min-height: 9rem;
+        resize: vertical;
+      }
+
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .row > * {
+        flex: 1 1 14rem;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 2.5rem;
+      }
+
+      button {
+        font-family: inherit;
+        font-size: 1rem;
+        padding: 0.6rem 1.4rem;
+        border-radius: 2px;
+        border: 1px solid var(--seal);
+        background: var(--seal);
+        color: var(--paper);
+        cursor: pointer;
+      }
+
+      button.secondary {
+        background: transparent;
+        color: var(--seal);
+      }
+
+      button:hover:not(:disabled) {
+        background: var(--seal-soft);
+        border-color: var(--seal-soft);
+        color: var(--paper);
+      }
+
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+
+      /* A visible focus ring matters more here than anywhere else: keyboard
+         is the primary way this page is operated. */
+      :focus-visible {
+        outline: 3px solid var(--focus);
+        outline-offset: 2px;
+      }
+
+      #status {
+        min-height: 1.6em;
+        margin: 0 0 0.75rem;
+        color: var(--ink-soft);
+      }
+
+      #status[data-tone='error'] {
+        color: var(--seal);
+        font-weight: 600;
+      }
+
+      #result {
+        font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
+        font-size: 0.95rem;
+        line-height: 1.75;
+        white-space: pre-wrap;
+        overflow-wrap: break-word;
+        background: var(--paper-sunk);
+        border: 1px solid var(--rule);
+        border-left: 3px solid var(--seal);
+        border-radius: 2px;
+        margin: 0;
+        padding: 1rem 1.1rem;
+        min-height: 4rem;
+      }
+
+      #result:empty::before {
+        content: attr(data-placeholder);
+        color: var(--ink-soft);
+        font-family: ui-serif, Georgia, serif;
+      }
+
+      footer {
+        margin-top: 3rem;
+        padding-top: 1.25rem;
+        border-top: 1px solid var(--rule);
+        color: var(--ink-soft);
+        font-size: 0.9rem;
+      }
+
+      footer a {
+        color: inherit;
+      }
+
+      .hint {
+        color: var(--ink-soft);
+        font-size: 0.9rem;
+        margin: 0.3rem 0 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="sheet">
+      <header>
+        <h1>sgf<span class="mark">2</span>text</h1>
+        <p class="tagline" id="tagline">
+          Превращает SGF-запись партии Го в текст, который читает скринридер: ход за ходом,
+          с координатами и снятыми камнями.
+        </p>
+      </header>
+
+      <main>
+        <form id="form" novalidate>
+          <div class="field">
+            <label for="sgf" id="sgf-label">Вставьте SGF-запись партии</label>
+            <textarea id="sgf" name="sgf" spellcheck="false" autocomplete="off"></textarea>
+          </div>
+
+          <div class="row">
+            <div>
+              <label for="file" id="file-label">Или выберите файл .sgf</label>
+              <input id="file" name="file" type="file" accept=".sgf,application/x-go-sgf" />
+            </div>
+            <div>
+              <label for="lang" id="lang-label">Язык записи</label>
+              <select id="lang" name="lang">
+                <option value="ru">Русский</option>
+                <option value="en">English</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button type="submit" id="convert">Преобразовать</button>
+            <button type="button" id="copy" class="secondary" disabled>Скопировать текст</button>
+          </div>
+        </form>
+
+        <section aria-labelledby="result-heading">
+          <h2 id="result-heading">Результат</h2>
+          <p id="status" role="status"></p>
+          <pre
+            id="result"
+            tabindex="0"
+            aria-labelledby="result-heading"
+            data-placeholder="Здесь появится запись партии."
+          ></pre>
+        </section>
+      </main>
+
+      <footer>
+        <p id="privacy">
+          Партия обрабатывается прямо в браузере и никуда не отправляется.
+        </p>
+        <p id="credits">
+          Идея и структура вывода — <a href="https://aigo.tokyo/sgf-txt">aigo.tokyo/sgf-txt</a>,
+          Японская ассоциация Го для незрячих. Исходный код:
+          <a href="https://github.com/arudenkoofficial/sgf2text">github.com/arudenkoofficial/sgf2text</a>.
+        </p>
+      </footer>
+    </div>
+
+    <script type="module" src="./dist/main.js"></script>
+  </body>
+</html>

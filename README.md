@@ -9,8 +9,7 @@ board, which is what makes a game replayable on a tactile board.
 
 ```
 Board size: 9×9
-Black: Alice
-White: Bob
+Black Alice, white Bob
 Result: Black wins by resignation, white resigned
 
 1. Black B9

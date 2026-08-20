@@ -51,15 +51,15 @@
 
 ## 8. Web page
 
-- [ ] 8.1 Build `web/index.html`: labelled textarea, `.sgf` file input, language switcher, convert and copy controls, and a result region marked `aria-live="polite"`.
-- [ ] 8.2 Implement `web/main.ts` wiring the controls to the core, rendering results and errors with `textContent` only, never `innerHTML` and never `alert`.
-- [ ] 8.3 Implement re-rendering the current game when the language changes, and copying the result with a spoken confirmation.
-- [ ] 8.4 Add the esbuild bundling script and verify the built page converts a fixture in a browser.
-- [ ] 8.5 Walk the page with a screen reader and keyboard only, confirming every control is reachable, named, and that results and errors are announced.
+- [x] 8.1 Build `web/index.html`: labelled textarea, `.sgf` file input, language switcher, convert and copy controls, and a result region marked `aria-live="polite"`.
+- [x] 8.2 Implement `web/main.ts` wiring the controls to the core, rendering results and errors with `textContent` only, never `innerHTML` and never `alert`.
+- [x] 8.3 Implement re-rendering the current game when the language changes, and copying the result with a spoken confirmation.
+- [x] 8.4 Add the esbuild bundling script and verify the built page converts a fixture in a browser.
+- [x] 8.5 Walk the page with a screen reader and keyboard only, confirming every control is reachable, named, and that results and errors are announced.
 
 ## 9. Delivery
 
-- [ ] 9.1 Add the CI workflow running `node --test` and `tsc --noEmit` on the Node 24 and 26 matrix.
-- [ ] 9.2 Add the Pages workflow building `web/` with esbuild and deploying on pushes to the default branch.
+- [x] 9.1 Add the CI workflow running `node --test` and `tsc --noEmit` on the Node 24 and 26 matrix.
+- [x] 9.2 Add the Pages workflow building `web/` with esbuild and deploying on pushes to the default branch.
 - [x] 9.3 Write `README.md`: what the tool is for, how to use the page and the CLI, the supported languages, the main-line-only limitation, credit to aigo.tokyo as prior art, and a note that no personal data of any user appears in this repository.
 - [ ] 9.4 Push the repository, enable Pages with GitHub Actions as the source, and confirm the published page converts a real game.

@@ -1,3 +1,4 @@
+import { SgfError } from '../errors.ts';
 import type { Locale, LocaleId } from '../locale.ts';
 import { ru } from './ru.ts';
 import { en } from './en.ts';
@@ -14,7 +15,10 @@ export const isLocaleId = (id: string): id is LocaleId =>
 
 export const getLocale = (id: string): Locale => {
   if (!isLocaleId(id)) {
-    throw new Error(`Unknown language "${id}". Supported languages: ${LOCALE_IDS.join(', ')}`);
+    throw new SgfError(
+      'unknown-locale',
+      `Unknown language "${id}". Supported languages: ${LOCALE_IDS.join(', ')}`,
+    );
   }
 
   return LOCALES[id];

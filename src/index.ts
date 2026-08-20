@@ -17,6 +17,8 @@ export type {
 export type { Locale, LocaleId } from './locale.ts';
 export type { ParsedGame, ParsedMove } from './parse.ts';
 
+export { SgfError, isSgfError } from './errors.ts';
+export type { SgfErrorCode } from './errors.ts';
 export { western } from './coords.ts';
 export { DEFAULT_LOCALE, LOCALE_IDS, getLocale, isLocaleId } from './locales/index.ts';
 

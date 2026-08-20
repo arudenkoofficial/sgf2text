@@ -17,14 +17,18 @@ export type Locale = {
     event: string;
     place: string;
     date: string;
-    black: string;
-    white: string;
     komi: string;
     handicap: string;
     result: string;
   };
 
   boardSize(size: number): string;
+
+  /**
+   * Both players on one line. Two separate lines would double the listening
+   * time for what is a single fact: who played which colour.
+   */
+  players(black: string | undefined, white: string | undefined): string | undefined;
   handicap(count: number, stones: string[]): string;
   result(result: GameResult): string;
 

@@ -1,5 +1,6 @@
 import sgf from '@sabaki/sgf';
 import type { SgfNode } from '@sabaki/sgf';
+import { SgfError } from './errors.ts';
 import type { Color, GameMeta, GameResult, SetupStone, Vertex } from './types.ts';
 
 /** A move as the file records it, before the game has been replayed. */
@@ -74,7 +75,7 @@ const parseSize = (root: SgfNode): number => {
   if (raw.includes(':')) {
     const [width, height] = raw.split(':');
     if (width !== height) {
-      throw new Error(`Rectangular boards are not supported (SZ[${raw}])`);
+      throw new SgfError('rectangular-board', `Rectangular boards are not supported (SZ[${raw}])`);
     }
 
     return Number(width);
@@ -82,7 +83,7 @@ const parseSize = (root: SgfNode): number => {
 
   const size = Number(raw);
   if (Number.isNaN(size) || size < 2) {
-    throw new Error(`Unreadable board size SZ[${raw}]`);
+    throw new SgfError('unreadable-size', `Unreadable board size SZ[${raw}]`);
   }
 
   return size;
@@ -175,7 +176,7 @@ const parseMove = (node: SgfNode, size: number): ParsedMove | null => {
 
     const at = vertexFromSgf(value);
     if (at === null) {
-      throw new Error(`Unreadable move ${color}[${value}]`);
+      throw new SgfError('unreadable-move', `Unreadable move ${color}[${value}]`);
     }
 
     return { kind: 'move', color, at };
@@ -202,19 +203,19 @@ const mainLine = function* (root: SgfNode): Generator<SgfNode> {
 /** Parses SGF text into the game it records, without applying any Go rules. */
 export const parseGame = (input: string): ParsedGame => {
   if (input.trim() === '') {
-    throw new Error('The input is empty');
+    throw new SgfError('empty-input', 'The input is empty');
   }
 
   let trees: SgfNode[];
   try {
     trees = sgf.parse(input);
   } catch (cause) {
-    throw new Error('The input could not be parsed as SGF', { cause });
+    throw new SgfError('not-sgf', 'The input could not be parsed as SGF', { cause });
   }
 
   const root = trees[0];
   if (root === undefined) {
-    throw new Error('The input contains no SGF game tree');
+    throw new SgfError('not-sgf', 'The input contains no SGF game tree');
   }
 
   const size = parseSize(root);
@@ -236,7 +237,7 @@ export const parseGame = (input: string): ParsedGame => {
   // Plain prose parses without complaint into a single empty node, so a tree
   // that carries neither properties nor moves is not a game record at all.
   if (Object.keys(root.data).length === 0 && moves.length === 0) {
-    throw new Error('The input does not look like an SGF game record');
+    throw new SgfError('not-sgf', 'The input does not look like an SGF game record');
   }
 
   return { size, meta, moves };

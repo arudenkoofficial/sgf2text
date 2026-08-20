@@ -34,6 +34,26 @@ test('states players, komi and result', () => {
   assert.match(text, /3\.5/);
 });
 
+// Both players on one line: two lines would double the listening time for a
+// single fact — who played which colour.
+test('puts both players on one line', () => {
+  const ru = lines(renderFixture('plain.sgf')).filter((line) => /Alice|Bob/.test(line));
+  assert.deepEqual(ru, ['Чёрные Alice, белые Bob']);
+
+  const en = lines(renderFixture('plain.sgf', 'en')).filter((line) => /Alice|Bob/.test(line));
+  assert.deepEqual(en, ['Black Alice, white Bob']);
+});
+
+test('names only the player the record knows', () => {
+  const text = render(
+    replay(parseGame('(;GM[1]SZ[19]PB[Alice];B[pd])')),
+    getLocale('ru'),
+  );
+
+  assert.match(text, /^Чёрные Alice$/m);
+  assert.doesNotMatch(text, /белые/i);
+});
+
 test('omits metadata the game does not carry, rather than printing it empty', () => {
   const text = render(recordOf('capture-single.sgf'), getLocale('ru'));
 

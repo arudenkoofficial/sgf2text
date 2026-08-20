@@ -42,14 +42,28 @@ export const ru: Locale = {
     event: 'Турнир',
     place: 'Место',
     date: 'Дата',
-    black: 'Чёрные',
-    white: 'Белые',
     komi: 'Коми',
     handicap: 'Фора',
     result: 'Результат',
   },
 
   boardSize: (size) => `${size}×${size}`,
+
+  players: (black, white) => {
+    const parts: string[] = [];
+    if (black !== undefined) {
+      parts.push(`чёрные ${black}`);
+    }
+    if (white !== undefined) {
+      parts.push(`белые ${white}`);
+    }
+    if (parts.length === 0) {
+      return undefined;
+    }
+
+    const line = parts.join(', ');
+    return line.charAt(0).toUpperCase() + line.slice(1);
+  },
 
   handicap: (count, placements) => {
     if (placements.length === 0) {

@@ -28,8 +28,12 @@ export const render = (record: GameRecord, locale: Locale): string => {
   addMeta(labels.event, record.meta.event);
   addMeta(labels.place, record.meta.place);
   addMeta(labels.date, record.meta.date);
-  addMeta(labels.black, record.meta.blackPlayer);
-  addMeta(labels.white, record.meta.whitePlayer);
+
+  const players = locale.players(record.meta.blackPlayer, record.meta.whitePlayer);
+  if (players !== undefined) {
+    header.push(players);
+  }
+
   addMeta(labels.komi, record.meta.komi);
 
   const setup = record.events.find((event) => event.kind === 'setup');

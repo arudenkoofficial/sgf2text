@@ -19,14 +19,28 @@ export const en: Locale = {
     event: 'Event',
     place: 'Place',
     date: 'Date',
-    black: 'Black',
-    white: 'White',
     komi: 'Komi',
     handicap: 'Handicap',
     result: 'Result',
   },
 
   boardSize: (size) => `${size}×${size}`,
+
+  players: (black, white) => {
+    const parts: string[] = [];
+    if (black !== undefined) {
+      parts.push(`black ${black}`);
+    }
+    if (white !== undefined) {
+      parts.push(`white ${white}`);
+    }
+    if (parts.length === 0) {
+      return undefined;
+    }
+
+    const line = parts.join(', ');
+    return line.charAt(0).toUpperCase() + line.slice(1);
+  },
 
   handicap: (count, placements) => {
     if (placements.length === 0) {
