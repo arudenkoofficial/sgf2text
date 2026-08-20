@@ -200,10 +200,12 @@ const applyVisible = (strings: UiStrings): void => {
   document.title = strings.title;
 
   need('#skip-link').textContent = strings.skipLink;
+  need('#subtitle').textContent = strings.subtitle;
   need('#tagline').textContent = strings.tagline;
   need('#sgf-label').textContent = strings.sgfLabel;
   need('#file-label').textContent = strings.fileLabel;
   need('#lang-label').textContent = strings.langLabel;
+  need('#input-heading').textContent = strings.inputHeading;
   need('#result-heading').textContent = strings.resultHeading;
   need('#privacy').textContent = strings.privacy;
   applyCredits(strings);
@@ -241,6 +243,22 @@ const applyLanguage = (): void => {
 form.addEventListener('submit', (event) => {
   event.preventDefault();
   convert();
+});
+
+/**
+ * A record in the field is unsaved work: it was pasted or read from a file, this
+ * page stores nothing, and a reload loses it with no way back.
+ *
+ * Guarded on the field being non-empty, which keeps the dialog away from the
+ * visitor who has converted nothing and is simply leaving. The browser decides
+ * the wording — no message of ours is shown, and none is worth writing.
+ */
+window.addEventListener('beforeunload', (event) => {
+  if (input.value.trim() === '') {
+    return;
+  }
+
+  event.preventDefault();
 });
 
 /**
