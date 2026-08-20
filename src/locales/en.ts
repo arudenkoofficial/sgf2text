@@ -6,9 +6,13 @@ const SIDE: Record<Color, string> = { B: 'Black', W: 'White' };
 
 const opposite = (color: Color): Color => (color === 'B' ? 'W' : 'B');
 
-const stones = (count: number): string => `${count} ${count === 1 ? 'stone' : 'stones'}`;
+const formatNumber = new Intl.NumberFormat('en');
 
-const points = (count: number): string => `${count} ${count === 1 ? 'point' : 'points'}`;
+const stones = (count: number): string =>
+  `${formatNumber.format(count)} ${count === 1 ? 'stone' : 'stones'}`;
+
+const points = (count: number): string =>
+  `${formatNumber.format(count)} ${count === 1 ? 'point' : 'points'}`;
 
 export const en: Locale = {
   id: 'en',
@@ -25,6 +29,8 @@ export const en: Locale = {
   },
 
   boardSize: (size) => `${size}×${size}`,
+
+  number: (value) => formatNumber.format(value),
 
   players: (black, white) => {
     const parts: string[] = [];

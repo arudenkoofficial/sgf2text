@@ -27,11 +27,13 @@ const inflect = (count: number, forms: { one: string; few: string; many: string 
   return forms.few;
 };
 
+const formatNumber = new Intl.NumberFormat('ru');
+
 const stones = (count: number): string =>
-  `${count} ${inflect(count, { one: 'камень', few: 'камня', many: 'камней' })}`;
+  `${formatNumber.format(count)} ${inflect(count, { one: 'камень', few: 'камня', many: 'камней' })}`;
 
 const points = (count: number): string =>
-  `${count} ${inflect(count, { one: 'очко', few: 'очка', many: 'очков' })}`;
+  `${formatNumber.format(count)} ${inflect(count, { one: 'очко', few: 'очка', many: 'очков' })}`;
 
 export const ru: Locale = {
   id: 'ru',
@@ -48,6 +50,8 @@ export const ru: Locale = {
   },
 
   boardSize: (size) => `${size}×${size}`,
+
+  number: (value) => formatNumber.format(value),
 
   players: (black, white) => {
     const parts: string[] = [];

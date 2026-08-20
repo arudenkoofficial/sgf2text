@@ -30,8 +30,14 @@ test('states players, komi and result', () => {
 
   assert.match(text, /Alice/);
   assert.match(text, /Bob/);
-  assert.match(text, /6\.5/);
-  assert.match(text, /3\.5/);
+  assert.match(text, /6,5/);
+  assert.match(text, /3,5/);
+});
+
+// A Russian voice reads "6.5" as "six point five"; "6,5" it reads as a number.
+test('formats numbers the way the language writes them', () => {
+  assert.match(renderFixture('plain.sgf'), /Коми: 6,5/);
+  assert.match(renderFixture('plain.sgf', 'en'), /Komi: 6\.5/);
 });
 
 // Both players on one line: two lines would double the listening time for a
@@ -129,7 +135,7 @@ test('spells out every kind of result', () => {
   };
 
   assert.match(resultLine('W+R') ?? '', /сдал/i);
-  assert.match(resultLine('B+3.5') ?? '', /3\.5/);
+  assert.match(resultLine('B+3.5') ?? '', /3,5/);
   assert.match(resultLine('B+T') ?? '', /времени/i);
   assert.match(resultLine('0') ?? '', /ничья/i);
   assert.equal(resultLine(''), undefined, 'an absent result prints no line');

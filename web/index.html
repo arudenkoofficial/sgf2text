@@ -8,10 +8,18 @@
       name="description"
       content="Преобразует SGF-запись партии Го в текст, который читает скринридер."
     />
+    <meta name="theme-color" content="#f4f1ea" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#171614" media="(prefers-color-scheme: dark)" />
     <style>
       /* Everything is inline: the page must make no network request, so that
          an unpublished game never leaves the browser. */
       :root {
+        /* Tells the browser to render its own widgets — scrollbars, the native
+           select, form controls — in the matching scheme. Without it they stay
+           light on the dark background, since our variables only paint what we
+           draw ourselves. */
+        color-scheme: light dark;
+
         --paper: #f4f1ea;
         --paper-sunk: #ebe6db;
         --ink: #1c1a17;
@@ -49,6 +57,30 @@
         font-family: ui-serif, Georgia, 'Times New Roman', serif;
         font-size: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
         line-height: 1.6;
+        -webkit-tap-highlight-color: rgb(28 93 153 / 0.2);
+      }
+
+      /* Off-screen until focused, so a keyboard user can jump past the header
+         without a visible control cluttering the page. */
+      .skip-link {
+        position: absolute;
+        left: -9999px;
+        top: 0;
+        background: var(--paper);
+        color: var(--ink);
+        padding: 0.6rem 1rem;
+        border: 1px solid var(--seal);
+        border-radius: 2px;
+      }
+
+      .skip-link:focus {
+        left: 0.5rem;
+        top: 0.5rem;
+        z-index: 1;
+      }
+
+      main:focus {
+        outline: none;
       }
 
       .sheet {
@@ -66,6 +98,7 @@
         font-size: clamp(1.75rem, 1.4rem + 1.6vw, 2.5rem);
         letter-spacing: -0.02em;
         margin: 0 0 0.35rem;
+        text-wrap: balance;
       }
 
       h1 .mark {
@@ -142,6 +175,7 @@
         background: var(--seal);
         color: var(--paper);
         cursor: pointer;
+        touch-action: manipulation;
       }
 
       button.secondary {
@@ -149,13 +183,16 @@
         color: var(--seal);
       }
 
-      button:hover:not(:disabled) {
+      button:hover:not([aria-disabled='true']) {
         background: var(--seal-soft);
         border-color: var(--seal-soft);
         color: var(--paper);
       }
 
-      button:disabled {
+      /* aria-disabled rather than the disabled attribute: a disabled button is
+         removed from the tab order, so a screen reader user tabbing through the
+         page would never learn that copying exists. */
+      button[aria-disabled='true'] {
         opacity: 0.45;
         cursor: not-allowed;
       }
@@ -219,6 +256,7 @@
     </style>
   </head>
   <body>
+    <a class="skip-link" href="#main" id="skip-link">Перейти к конвертеру</a>
     <div class="sheet">
       <header>
         <h1>sgf<span class="mark">2</span>text</h1>
@@ -228,11 +266,18 @@
         </p>
       </header>
 
-      <main>
+      <main id="main" tabindex="-1">
         <form id="form" novalidate>
           <div class="field">
             <label for="sgf" id="sgf-label">Вставьте SGF-запись партии</label>
-            <textarea id="sgf" name="sgf" spellcheck="false" autocomplete="off"></textarea>
+            <textarea
+              id="sgf"
+              name="sgf"
+              spellcheck="false"
+              autocomplete="off"
+              aria-describedby="status"
+              placeholder="(;GM[1]FF[4]SZ[19];B[pd];W[dp]…)"
+            ></textarea>
           </div>
 
           <div class="row">
@@ -251,7 +296,9 @@
 
           <div class="actions">
             <button type="submit" id="convert">Преобразовать</button>
-            <button type="button" id="copy" class="secondary" disabled>Скопировать текст</button>
+            <button type="button" id="copy" class="secondary" aria-disabled="true">
+              Скопировать текст
+            </button>
           </div>
         </form>
 
@@ -262,6 +309,7 @@
             id="result"
             tabindex="0"
             aria-labelledby="result-heading"
+            translate="no"
             data-placeholder="Здесь появится запись партии."
           ></pre>
         </section>

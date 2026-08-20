@@ -34,7 +34,10 @@ export const render = (record: GameRecord, locale: Locale): string => {
     header.push(players);
   }
 
-  addMeta(labels.komi, record.meta.komi);
+  addMeta(
+    labels.komi,
+    record.meta.komi === undefined ? undefined : locale.number(record.meta.komi),
+  );
 
   const setup = record.events.find((event) => event.kind === 'setup');
   const handicapStones = setup?.stones.map((stone) => format(stone.at)) ?? [];

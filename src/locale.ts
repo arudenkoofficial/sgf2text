@@ -25,6 +25,12 @@ export type Locale = {
   boardSize(size: number): string;
 
   /**
+   * A number in this language's own convention. Komi read aloud as "6.5" by a
+   * Russian voice comes out as "six point five"; "6,5" is read as the number.
+   */
+  number(value: number): string;
+
+  /**
    * Both players on one line. Two separate lines would double the listening
    * time for what is a single fact: who played which colour.
    */
