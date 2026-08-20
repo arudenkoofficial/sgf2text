@@ -1,25 +1,25 @@
 ## 1. Project setup
 
-- [ ] 1.1 Add `package.json`: name `sgf2text`, `"type": "module"`, MIT, `engines: ">=24"`, dependencies `@sabaki/sgf` and `@sabaki/go-board`, devDependencies `typescript` and `esbuild`, scripts for test, build and page bundle. No `bin` entry.
-- [ ] 1.2 Add `tsconfig.json`: `strict`, `nodenext`, `allowImportingTsExtensions`, `rewriteRelativeImportExtensions`, `verbatimModuleSyntax`, emit to `dist/`.
-- [ ] 1.3 Add `.nvmrc` pinning 26.7.0, `.gitignore` covering `node_modules`, `dist`, `.claude/worktrees`, and the MIT `LICENSE`.
-- [ ] 1.4 Add `test/fixtures/` with SGF files: a plain game, a game with a pass `B[]`, a game with a comment-only node, a game with two variations, a game whose player name is `FREDDY`, a four-stone handicap game, a game with a captured group, and a game with a ko.
-- [ ] 1.5 Verify the toolchain end to end: a placeholder test runs through `node --test` on a `.ts` file and `tsc --noEmit` passes.
+- [x] 1.1 Add `package.json`: name `sgf2text`, `"type": "module"`, MIT, `engines: ">=24"`, dependencies `@sabaki/sgf` and `@sabaki/go-board`, devDependencies `typescript` and `esbuild`, scripts for test, build and page bundle. No `bin` entry.
+- [x] 1.2 Add `tsconfig.json`: `strict`, `nodenext`, `allowImportingTsExtensions`, `rewriteRelativeImportExtensions`, `verbatimModuleSyntax`, emit to `dist/`.
+- [x] 1.3 Add `.nvmrc` pinning 26.7.0, `.gitignore` covering `node_modules`, `dist`, `.claude/worktrees`, and the MIT `LICENSE`.
+- [x] 1.4 Add `test/fixtures/` with SGF files: a plain game, a game with a pass `B[]`, a game with a comment-only node, a game with two variations, a game whose player name is `FREDDY`, a four-stone handicap game, a game with a captured group, and a game with a ko.
+- [x] 1.5 Verify the toolchain end to end: a placeholder test runs through `node --test` on a `.ts` file and `tsc --noEmit` passes.
 
 ## 2. Types and coordinates
 
-- [ ] 2.1 Write failing tests for `src/coords.ts`: `pd` on 19x19 is `Q16`, the ninth column is `J`, `I` never appears, and `cc` on 9x9 is `C7`.
-- [ ] 2.2 Define the shared types in `src/types.ts` — `Color`, `Vertex`, `GameEvent`, `GameMeta`, `GameRecord`, `CoordinateSystem` — using erasable syntax only, no `enum`.
-- [ ] 2.3 Implement `src/coords.ts` with the western coordinate system, behind a named coordinate-system type so another notation can be added later, until the tests pass.
+- [x] 2.1 Write failing tests for `src/coords.ts`: `pd` on 19x19 is `Q16`, the ninth column is `J`, `I` never appears, and `cc` on 9x9 is `C7`.
+- [x] 2.2 Define the shared types in `src/types.ts` — `Color`, `Vertex`, `GameEvent`, `GameMeta`, `GameRecord`, `CoordinateSystem` — using erasable syntax only, no `enum`.
+- [x] 2.3 Implement `src/coords.ts` with the western coordinate system, behind a named coordinate-system type so another notation can be added later, until the tests pass.
 
 ## 3. Parsing
 
-- [ ] 3.1 Write failing tests for `src/parse.ts`: metadata from a standard game, `PB[FREDDY]` keeping its `RE`, absent `SZ` defaulting to 19, `SZ[19:9]` rejected, empty and malformed input rejected.
-- [ ] 3.2 Implement root-property extraction on top of `@sabaki/sgf`, including the result codes `R`, `T`, `F`, draws and unknown values.
-- [ ] 3.3 Write failing tests for move extraction: modern pass `B[]`, legacy pass `B[tt]` on 19x19 versus a real move on a larger board, comment-only nodes skipped without disturbing numbering, variations limited to the main line.
-- [ ] 3.4 Implement main-line traversal producing move and pass events.
-- [ ] 3.5 Write a failing test for setup stones: `HA[4]AB[dd][pd][dp][pp]` yields a setup event with four vertices, and `HA[4]` alone yields none.
-- [ ] 3.6 Implement setup event extraction from `AB` and `AW`.
+- [x] 3.1 Write failing tests for `src/parse.ts`: metadata from a standard game, `PB[FREDDY]` keeping its `RE`, absent `SZ` defaulting to 19, `SZ[19:9]` rejected, empty and malformed input rejected.
+- [x] 3.2 Implement root-property extraction on top of `@sabaki/sgf`, including the result codes `R`, `T`, `F`, draws and unknown values.
+- [x] 3.3 Write failing tests for move extraction: modern pass `B[]`, legacy pass `B[tt]` on 19x19 versus a real move on a larger board, comment-only nodes skipped without disturbing numbering, variations limited to the main line.
+- [x] 3.4 Implement main-line traversal producing move and pass events.
+- [x] 3.5 Write a failing test for setup stones: `HA[4]AB[dd][pd][dp][pp]` yields a setup event with four vertices, and `HA[4]` alone yields none.
+- [x] 3.6 Implement setup event extraction from `AB` and `AW`.
 
 ## 4. Replay and captures
 

@@ -29,7 +29,7 @@
     "dist"
   ],
   "scripts": {
-    "test": "node --test test/",
+    "test": "node --test",
     "typecheck": "tsc --noEmit",
     "build": "tsc --project tsconfig.build.json"
   },
@@ -38,6 +38,7 @@
     "@sabaki/sgf": "^3.5.0"
   },
   "devDependencies": {
+    "@types/node": "^26.2.0",
     "esbuild": "^0.28.2",
     "typescript": "^7.0.2"
   }
