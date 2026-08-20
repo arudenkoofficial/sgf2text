@@ -32,8 +32,7 @@ agree with it, or the same board would be described two different ways.
 - Name the stones removed by each capturing move, so a physical board can be kept in
   sync with the record.
 - Give handicap stone coordinates, not just a count.
-- Support Russian, English and Japanese, each with the coordinate convention its
-  readers expect.
+- Support Russian and English.
 - Ship one conversion core reused by a web page, a CLI and — later — the OGS
   userscript.
 - Convert entirely on the client, so unpublished games are never uploaded anywhere.
@@ -41,6 +40,11 @@ agree with it, or the same board would be described two different ways.
 **Non-Goals:**
 
 - Reverse conversion (text to SGF). The Japanese site offers it; we defer it.
+- A Japanese locale. It is deferred rather than rejected: the Japan Go Association
+  for the Visually Impaired is both the prior art here and a natural collaborator,
+  and their notation (`16の四` — column as an arabic number from the left edge, row
+  as a kanji numeral from the top edge) is documented in the architecture below so
+  the locale can be added without reopening design decisions.
 - Rendering comments (`C[]`) or variation branches in the output. They must not break
   conversion, but they are not part of the text.
 - Integration with the OGS userscript. The API is shaped to allow it; the wiring is a
@@ -54,9 +58,9 @@ agree with it, or the same board would be described two different ways.
 
 `sgfToRecord` produces a language-free `GameRecord`; `render` turns it into text for
 a locale. The alternative — building strings while walking the SGF tree, as the
-Japanese converter does — is less code today and collapses under three languages:
-every wording change would touch the parser, and tests would assert on prose instead
-of structure. The split also gives the userscript a way to consume moves and captures
+Japanese converter does — is less code today and collapses as soon as there is more
+than one language: every wording change would touch the parser, and tests would
+assert on prose instead of structure. The split also gives the userscript a way to consume moves and captures
 without any text at all, which is the whole reason `sgfToRecord` is public.
 
 ### `@sabaki/sgf` for parsing
@@ -78,11 +82,14 @@ amount of code that keeps us independent of its internals.
 
 ### A locale owns its coordinate system
 
-`Locale = { strings, coordinateSystem }`. Japanese blind players read `16の四`;
-Russian and English readers need `Q16`. Treating locale as a dictionary of words only
-would have forced a second, parallel switch on notation everywhere a vertex is
-printed. The Japanese convention is taken from aigo.tokyo rather than from formal
-tradition, on the grounds that their readers are already trained on it.
+`Locale = { strings, coordinateSystem }`, even though both shipped locales point at
+the same western system. The alternative — printing coordinates directly in the
+renderer — costs nothing today and everything on the day a locale needs a different
+notation, because vertices are printed in half a dozen places (moves, captures,
+handicap) and each would need its own switch. Japanese is the concrete case this
+guards against: aigo.tokyo writes `pd` as `16の四`, an arabic column from the left
+edge and a kanji row from the top edge, which is a different function of the same
+vertex rather than a different word for it.
 
 ### Native TypeScript execution
 
@@ -126,9 +133,6 @@ thing in it.
 - **Erasable-syntax rules are easy to violate accidentally** — an `enum` compiles fine
   under `tsc` but breaks `node cli.ts` → CI runs the tests through `node --test` on
   the raw sources, so any violation fails the build rather than surfacing at runtime.
-- **The Japanese locale has no native reviewer on the team** → its convention is
-  copied verbatim from aigo.tokyo and marked for confirmation with the association,
-  which is also a natural first contact for collaboration.
 - **The Russian wording is unvalidated** → the phrasing of move lines is a locale
   file, deliberately the cheapest thing in the project to change once a real user has
   heard it read aloud.

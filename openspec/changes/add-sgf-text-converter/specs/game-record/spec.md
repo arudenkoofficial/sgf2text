@@ -89,8 +89,16 @@ variations into the move sequence.
 
 ### Requirement: Captured stones
 
-The system SHALL replay every move under Go rules and record, for each move, the
-vertices of the stones it captures.
+The system SHALL maintain a board position, apply every move to it, and remove the
+enemy groups that the move leaves without liberties, recording their vertices
+against that move. Removal SHALL happen in the order the rules prescribe: the stone
+is placed first, enemy groups without liberties are removed next, and only then is
+the moving player's own group considered — so that a move which appears suicidal but
+captures is handled correctly.
+
+Judging whether a move is legal is out of scope: the system computes the
+consequences of what the file records and never rejects a move for suicide or for
+violating ko.
 
 #### Scenario: Single stone captured
 
@@ -112,6 +120,13 @@ vertices of the stones it captures.
 
 - **WHEN** a ko is captured and later recaptured
 - **THEN** each capture is recorded against the move that made it, one stone each
+
+#### Scenario: Move that looks suicidal but captures
+
+- **WHEN** a move places a stone on a vertex with no liberties of its own, and that
+  move removes the last liberty of an adjacent enemy group
+- **THEN** the enemy group is recorded as captured and the placed stone stays on the
+  board, because enemy removal precedes any consideration of the player's own group
 
 #### Scenario: Move that captures nothing
 

@@ -17,12 +17,10 @@ variations.
   converter never provides, yet without which a tactile board cannot be kept in sync
   with the record.
 - Handicap games list the coordinates of each handicap stone, not merely how many.
-- Three languages: Russian, English and Japanese. Each carries its own coordinate
-  convention, because Japanese notation numbers columns right-to-left while western
-  notation letters them left-to-right.
-- Coordinates in Russian and English match what the existing OGS userscript speaks
-  during live play (`A-T` without `I`, rows counted bottom-up), so a player hears the
-  same board described the same way live and in review.
+- Two languages: Russian and English.
+- Coordinates match what the existing OGS userscript speaks during live play (`A-T`
+  without `I`, rows counted bottom-up), so a player hears the same board described
+  the same way live and in review.
 - A web page on GitHub Pages that works with a screen reader: a real textarea, file
   upload for `.sgf`, results announced through a live region, and errors printed on
   the page rather than thrown into a modal dialog.
@@ -36,7 +34,7 @@ variations.
 - `game-record`: parsing an SGF file into a neutral, language-independent record of
   the game, replaying it under Go rules so that captured stones are known.
 - `text-rendering`: turning that record into a screen-reader-friendly text in a
-  chosen language, including that language's coordinate convention.
+  chosen language.
 - `web-converter`: an accessible browser page that converts pasted or uploaded SGF.
 - `cli-converter`: a command-line entry point for converting files.
 

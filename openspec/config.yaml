@@ -51,12 +51,12 @@ context: |
     (`ogs-voice-assistant`), so the converter must match it — a
     mismatch would make recorded games vertically mirrored relative to
     live play.
-  - Japanese notation, as used by aigo.tokyo and therefore familiar to
-    Japanese blind players: column as an arabic number counted from the
-    left edge, row as a kanji numeral counted from the top edge, joined
-    by `の` (so `pd` reads `16の四`). A locale is therefore not just a
-    dictionary of words but also a coordinate system:
-    `Locale = { strings, coordinateSystem }`.
+  - Western notation is the only one this version supports. The
+    coordinate system nevertheless stays a named concept separate from
+    the vocabulary (`Locale = { strings, coordinateSystem }`), because
+    a Japanese locale would need its own — aigo.tokyo writes a column
+    as an arabic number from the left edge and a row as a kanji numeral
+    from the top edge, so `pd` reads `16の四`.
   - Captures cannot be derived by parsing alone: the game must be
     replayed under Go rules to find groups left without liberties.
 

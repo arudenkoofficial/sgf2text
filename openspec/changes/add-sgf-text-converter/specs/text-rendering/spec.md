@@ -21,9 +21,12 @@ the result line by line.
 
 ### Requirement: Western coordinates
 
-For the `ru` and `en` locales the system SHALL name a vertex by a column letter from
-`A` to `T` omitting `I`, followed by a row number counted from the bottom edge, so
-that the notation matches what the OGS userscript speaks during live play.
+The system SHALL name a vertex by a column letter from `A` to `T` omitting `I`,
+followed by a row number counted from the bottom edge, so that the notation matches
+what the OGS userscript speaks during live play. Western notation is the only
+coordinate system in this version, but it SHALL be held in a named coordinate system
+rather than inlined into the renderer, so that a locale needing another notation can
+supply one.
 
 #### Scenario: Top-right star point
 
@@ -41,18 +44,6 @@ that the notation matches what the OGS userscript speaks during live play.
 - **WHEN** the vertex `cc` on a 9x9 board is rendered
 - **THEN** the output names it `C7`, counting the row from the bottom edge of that
   board
-
-### Requirement: Japanese coordinates
-
-For the `ja` locale the system SHALL follow the convention already established by
-the Japan Go Association for the Visually Impaired: the column as an arabic number
-counted from the left edge, the row as a kanji numeral counted from the top edge,
-joined by `の`.
-
-#### Scenario: Top-right star point in Japanese
-
-- **WHEN** the vertex `pd` on a 19x19 board is rendered in the `ja` locale
-- **THEN** the output names it `16の四`
 
 ### Requirement: Move lines
 
@@ -127,15 +118,15 @@ code.
 
 ### Requirement: Locales
 
-The system SHALL support the locales `ru`, `en` and `ja`, each bundling its
-vocabulary and its coordinate system, and SHALL default to `ru` when none is given.
-Adding a locale SHALL require adding one file and no changes to the renderer.
+The system SHALL support the locales `ru` and `en`, each bundling its vocabulary and
+the coordinate system it uses, and SHALL default to `ru` when none is given. Adding
+a locale SHALL require adding one file and no changes to the renderer.
 
 #### Scenario: Locale selection
 
-- **WHEN** the same record is rendered with `en` and then with `ja`
-- **THEN** both outputs describe the same moves, each in its own language and its
-  own coordinate convention
+- **WHEN** the same record is rendered with `ru` and then with `en`
+- **THEN** both outputs describe the same moves with the same coordinates, each in
+  its own language
 
 #### Scenario: Unknown locale
 
