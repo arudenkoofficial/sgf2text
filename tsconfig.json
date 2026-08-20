@@ -19,5 +19,5 @@
       "@sabaki/sgf": ["./types/sabaki-sgf.d.ts"]
     }
   },
-  "include": ["src", "test", "types"]
+  "include": ["src", "test", "types", "web", "cli.ts"]
 }

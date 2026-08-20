@@ -45,9 +45,9 @@
 
 ## 7. CLI
 
-- [ ] 7.1 Write failing tests running `cli.ts` as a child process: a file path converts to standard output with exit code 0, and piped standard input converts with no path argument.
-- [ ] 7.2 Implement `cli.ts` reading from a path or standard input.
-- [ ] 7.3 Write failing tests for `--lang en`, an unsupported language, a missing file, invalid SGF and `--help`, asserting exit codes and that errors go to standard error with no partial standard output; make them pass.
+- [x] 7.1 Write failing tests running `cli.ts` as a child process: a file path converts to standard output with exit code 0, and piped standard input converts with no path argument.
+- [x] 7.2 Implement `cli.ts` reading from a path or standard input.
+- [x] 7.3 Write failing tests for `--lang en`, an unsupported language, a missing file, invalid SGF and `--help`, asserting exit codes and that errors go to standard error with no partial standard output; make them pass.
 
 ## 8. Web page
 
@@ -61,5 +61,5 @@
 
 - [ ] 9.1 Add the CI workflow running `node --test` and `tsc --noEmit` on the Node 24 and 26 matrix.
 - [ ] 9.2 Add the Pages workflow building `web/` with esbuild and deploying on pushes to the default branch.
-- [ ] 9.3 Write `README.md`: what the tool is for, how to use the page and the CLI, the supported languages, the main-line-only limitation, credit to aigo.tokyo as prior art, and a note that no personal data of any user appears in this repository.
+- [x] 9.3 Write `README.md`: what the tool is for, how to use the page and the CLI, the supported languages, the main-line-only limitation, credit to aigo.tokyo as prior art, and a note that no personal data of any user appears in this repository.
 - [ ] 9.4 Push the repository, enable Pages with GitHub Actions as the source, and confirm the published page converts a real game.
