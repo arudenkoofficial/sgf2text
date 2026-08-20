@@ -1,95 +1,13 @@
 import { isSgfError, sgfToText } from '../src/index.ts';
-import type { SgfErrorCode } from '../src/index.ts';
-
-type UiStrings = {
-  htmlLang: string;
-  title: string;
-  skipLink: string;
-  tagline: string;
-  sgfLabel: string;
-  fileLabel: string;
-  langLabel: string;
-  convert: string;
-  copy: string;
-  resultHeading: string;
-  placeholder: string;
-  privacy: string;
-  emptyInput: string;
-  fileFailed: string;
-  parseFailed: string;
-  errors: Record<SgfErrorCode, string>;
-  done: (moves: number) => string;
-  emptyResult: string;
-  copied: string;
-  copyFailed: string;
-};
-
-/**
- * The page's own labels. Kept apart from the library's locales, which describe
- * games rather than interfaces.
- */
-const UI: Record<string, UiStrings> = {
-  ru: {
-    htmlLang: 'ru',
-    title: 'sgf2text — запись партии Го текстом',
-    skipLink: 'Перейти к конвертеру',
-    tagline:
-      'Превращает SGF-запись партии Го в текст, который читает скринридер: ход за ходом, с координатами и снятыми камнями.',
-    sgfLabel: 'Вставьте SGF-запись партии',
-    fileLabel: 'Или выберите файл .sgf',
-    langLabel: 'Язык записи',
-    convert: 'Преобразовать',
-    copy: 'Скопировать текст',
-    resultHeading: 'Результат',
-    placeholder: 'Здесь появится запись партии.',
-    privacy: 'Партия обрабатывается прямо в браузере и никуда не отправляется.',
-    emptyInput: 'Поле пустое: вставьте запись партии или выберите файл.',
-    fileFailed: 'Не удалось прочитать файл.',
-    parseFailed: 'Не удалось разобрать запись партии.',
-    errors: {
-      'empty-input': 'Поле пустое: вставьте запись партии или выберите файл.',
-      'not-sgf': 'Это не похоже на SGF-запись партии. Проверьте, тот ли файл выбран.',
-      'rectangular-board': 'Прямоугольные доски пока не поддерживаются.',
-      'unreadable-size': 'В записи указан непонятный размер доски.',
-      'unreadable-move': 'В записи есть ход, который не удалось прочитать.',
-      'unknown-locale': 'Такой язык не поддерживается.',
-    },
-    done: (moves) => `Готово. Ходов в записи: ${moves}.`,
-    emptyResult: 'Копировать пока нечего: сначала преобразуйте партию.',
-    copied: 'Текст скопирован в буфер обмена.',
-    copyFailed: 'Не удалось скопировать. Выделите текст результата и скопируйте вручную.',
-  },
-  en: {
-    htmlLang: 'en',
-    title: 'sgf2text — a Go game as readable text',
-    skipLink: 'Skip to the Converter',
-    tagline:
-      'Turns an SGF Go game record into text a screen reader can read out: move by move, with coordinates and captured stones.',
-    sgfLabel: 'Paste an SGF game record',
-    fileLabel: 'Or choose an .sgf file',
-    langLabel: 'Output language',
-    convert: 'Convert',
-    copy: 'Copy the Text',
-    resultHeading: 'Result',
-    placeholder: 'The game record will appear here.',
-    privacy: 'The game is converted in your browser and is never sent anywhere.',
-    emptyInput: 'The field is empty: paste a game record or choose a file.',
-    fileFailed: 'The file could not be read.',
-    parseFailed: 'The game record could not be parsed.',
-    errors: {
-      'empty-input': 'The field is empty: paste a game record or choose a file.',
-      'not-sgf': 'This does not look like an SGF game record. Check that the file is the right one.',
-      'rectangular-board': 'Rectangular boards are not supported yet.',
-      'unreadable-size': 'The record states a board size that cannot be read.',
-      'unreadable-move': 'The record contains a move that could not be read.',
-      'unknown-locale': 'That language is not supported.',
-    },
-    done: (moves) => `Done. Moves in the record: ${moves}.`,
-    emptyResult: 'There is nothing to copy yet: convert a game first.',
-    copied: 'The text has been copied to the clipboard.',
-    copyFailed: 'Copying failed. Select the result text and copy it manually.',
-  },
-};
+import {
+  LANGUAGE_COOKIE,
+  languageCookie,
+  readCookie,
+  resolveLanguage,
+} from './language.ts';
+import { alternateLinks, canonicalUrl } from './metadata.ts';
+import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, stringsFor } from './ui-strings.ts';
+import type { UiStrings } from './ui-strings.ts';
 
 const need = <T extends Element>(selector: string): T => {
   const element = document.querySelector<T>(selector);
@@ -109,24 +27,54 @@ const copyButton = need<HTMLButtonElement>('#copy');
 const status = need<HTMLParagraphElement>('#status');
 const result = need<HTMLPreElement>('#result');
 
-const ui = (): UiStrings => UI[language.value] ?? UI.ru!;
+const ui = (): UiStrings => stringsFor(language.value);
 
 /**
  * Announcements go through a small status line rather than making the whole
  * result a live region: a live region holding a 300-move game would be read
  * out in full on every conversion.
+ *
+ * A message arrives as a function of the strings rather than as a finished
+ * sentence, so it can be rebuilt later in another language. The status line was
+ * the one piece of text `applyLanguage` did not translate, and the messages that
+ * outlive a switch are exactly the failures: every error path empties the result
+ * first, and an empty result is what stops the game being re-converted. So an
+ * error announced in English stayed under a `lang="ru"` document, which is the
+ * wording a screen reader then reads out with the wrong language's phonemes.
  */
-const announce = (message: string, tone: 'info' | 'error' = 'info'): void => {
-  status.textContent = message;
+type Message = (strings: UiStrings) => string;
+type Announcement = { message: Message; tone: 'info' | 'error' };
+
+let announcement: Announcement | null = null;
+
+const render = ({ message, tone }: Announcement): void => {
+  status.textContent = message(ui());
   status.dataset.tone = tone;
 
   // The status is the field's description, so a failure has to mark the field
   // invalid too — otherwise a screen reader reads the message but the input
   // still sounds fine.
   input.setAttribute('aria-invalid', tone === 'error' ? 'true' : 'false');
+};
+
+const announce = (message: Message, tone: 'info' | 'error' = 'info'): void => {
+  announcement = { message, tone };
+  render(announcement);
 
   if (tone === 'error') {
     input.focus();
+  }
+};
+
+/**
+ * Re-renders the standing message in the current language. Deliberately not
+ * `announce`: moving focus belongs to the failure that caused the message, not to
+ * a later change of language. A visitor operating the language control must not
+ * be thrown out of it and into the game field.
+ */
+const reannounce = (): void => {
+  if (announcement !== null) {
+    render(announcement);
   }
 };
 
@@ -141,32 +89,113 @@ const countMoves = (text: string): number =>
   text.split('\n').filter((line) => /^\d+\./.test(line)).length;
 
 const convert = (): void => {
-  const strings = ui();
   const sgf = input.value.trim();
 
   if (sgf === '') {
     showResult('');
-    announce(strings.emptyInput, 'error');
+    announce((strings) => strings.emptyInput, 'error');
     return;
   }
 
   try {
     const text = sgfToText(input.value, { locale: language.value });
+    const moves = countMoves(text);
     showResult(text);
-    announce(strings.done(countMoves(text)));
+    announce((strings) => strings.done(moves));
   } catch (error) {
     // The input is left exactly as the visitor typed it, so it can be corrected.
     // Only translated wording is announced: the library's own messages are
     // English, and English spliced into Russian speech is barely intelligible
     // through a screen reader.
+    //
+    // The code is kept rather than the sentence, so the same failure can be
+    // stated again if the language changes before it is dealt with.
+    const code = isSgfError(error) ? error.code : null;
     showResult('');
-    announce(isSgfError(error) ? strings.errors[error.code] : strings.parseFailed, 'error');
+    announce(
+      (strings) => (code === null ? strings.parseFailed : strings.errors[code]),
+      'error',
+    );
   }
 };
 
-const applyLanguage = (): void => {
-  const strings = ui();
+/**
+ * The addresses are rebuilt from `location` rather than read from the HTML, so a
+ * repository rename or a custom domain corrects itself for every visitor. The
+ * hardcoded values in the document remain only as the floor for a crawler that
+ * runs no JavaScript.
+ */
+const applyAddresses = (chosen: string): void => {
+  // Resolved against the directory rather than assembled from `origin` and
+  // `pathname`. Two reasons, both of which used to bite:
+  //
+  // `/sgf2text/index.html` and `/sgf2text/` are the same page, and building the
+  // base from `pathname` gave each of them a canonical address naming itself — so
+  // they competed as duplicates, which is the opposite of what the hreflang set is
+  // here to do. `new URL('.', …)` resolves both to the directory.
+  //
+  // And `origin` serialises to the string "null" in a document with an opaque
+  // origin, such as a sandboxed frame. `new URL('null' + '/sgf2text/')` is not a
+  // valid URL, so this threw — in the middle of translating the page, leaving the
+  // metadata in one language and every visible string in the other.
+  const base = new URL('.', window.location.href);
 
+  need<HTMLLinkElement>('link[rel="canonical"]').href = canonicalUrl(base, chosen);
+  need<HTMLMetaElement>('meta[property="og:url"]').content = canonicalUrl(base, chosen);
+
+  for (const { hreflang, href } of alternateLinks(base, SUPPORTED_LANGUAGES)) {
+    const link = document.querySelector<HTMLLinkElement>(
+      `link[rel="alternate"][hreflang="${hreflang}"]`,
+    );
+
+    if (link !== null) {
+      link.href = href;
+    }
+  }
+};
+
+const AIGO = 'https://aigo.tokyo/sgf-txt';
+const REPOSITORY = 'https://github.com/arudenkoofficial/sgf2text';
+
+const link = (href: string): HTMLAnchorElement => {
+  const anchor = document.createElement('a');
+  anchor.href = href;
+  anchor.textContent = href.replace(/^https:\/\//, '');
+
+  return anchor;
+};
+
+/**
+ * Rebuilt from nodes rather than assigned as markup: the paragraph holds two
+ * links, and this page never has a path that turns a string into HTML.
+ */
+const applyCredits = (strings: UiStrings): void => {
+  need('#credits').replaceChildren(
+    document.createTextNode(strings.creditsBefore),
+    link(AIGO),
+    document.createTextNode(strings.creditsBetween),
+    link(REPOSITORY),
+    document.createTextNode('.'),
+  );
+};
+
+/**
+ * The description and the link-preview tags reach a visitor before the page does
+ * — in a search result, or in a link someone pasted into a chat — so they have to
+ * follow the language too, not just what is visible on screen.
+ */
+const applyMetadata = (strings: UiStrings): void => {
+  need<HTMLMetaElement>('meta[name="description"]').content = strings.description;
+  need<HTMLMetaElement>('meta[property="og:title"]').content = strings.title;
+  need<HTMLMetaElement>('meta[property="og:description"]').content = strings.description;
+  need<HTMLMetaElement>('meta[property="og:locale"]').content = strings.ogLocale;
+  applyAddresses(language.value);
+};
+
+const applyVisible = (strings: UiStrings): void => {
+  // The language attribute belongs here rather than with the metadata: it is what
+  // chooses the screen reader's voice, so it is read by the visitor, not by a
+  // crawler, and it must never be the part that gets skipped.
   document.documentElement.lang = strings.htmlLang;
   document.title = strings.title;
 
@@ -177,9 +206,36 @@ const applyLanguage = (): void => {
   need('#lang-label').textContent = strings.langLabel;
   need('#result-heading').textContent = strings.resultHeading;
   need('#privacy').textContent = strings.privacy;
+  applyCredits(strings);
   convertButton.textContent = strings.convert;
   copyButton.textContent = strings.copy;
   result.dataset.placeholder = strings.placeholder;
+  reannounce();
+};
+
+/**
+ * The visible page first, the metadata second.
+ *
+ * These were one sequence with the metadata at the front, so a single missing tag
+ * aborted the run and left every label in one language beneath metadata already
+ * rewritten into the other — the precise incoherence this change exists to
+ * remove. Ordered this way, a metadata failure costs a crawler its signal and
+ * costs the visitor nothing.
+ *
+ * A throw in here is our defect, not a condition of the visitor's browser, so
+ * unlike the cookie and the address bar it is reported. The page makes no network
+ * request by design, which leaves the console as the only place to report it.
+ */
+const applyLanguage = (): void => {
+  const strings = ui();
+
+  applyVisible(strings);
+
+  try {
+    applyMetadata(strings);
+  } catch (error) {
+    console.error('The page metadata could not be updated', error);
+  }
 };
 
 form.addEventListener('submit', (event) => {
@@ -193,20 +249,84 @@ form.addEventListener('submit', (event) => {
  */
 const rememberLanguageInUrl = (): void => {
   const url = new URL(window.location.href);
+  if (url.searchParams.get('lang') === language.value) {
+    return;
+  }
+
   url.searchParams.set('lang', language.value);
-  window.history.replaceState(null, '', url);
+
+  try {
+    window.history.replaceState(null, '', url);
+  } catch {
+    // The same reasoning as the cookie, and the same failures: a document with an
+    // opaque origin refuses a history write, and Safari refuses one after enough
+    // of them in a short window. The address bar is a convenience; the page is
+    // not. This used to run unguarded, and ahead of the translation, so a refusal
+    // here left the language control naming a language the page was not in.
+  }
 };
 
-const restoreLanguageFromUrl = (): void => {
-  const requested = new URL(window.location.href).searchParams.get('lang');
-  if (requested !== null && requested in UI) {
-    language.value = requested;
+/**
+ * Reading cookies can raise a SecurityError in a sandboxed frame, and writing one
+ * silently does nothing when the browser blocks them. Either way the page works in
+ * full and the visitor is told nothing: a preference that could not be stored is
+ * not their problem to solve.
+ */
+const storedLanguage = (): string | null => {
+  try {
+    return readCookie(document.cookie, LANGUAGE_COOKIE);
+  } catch {
+    return null;
   }
+};
+
+const rememberLanguageInCookie = (): void => {
+  try {
+    document.cookie = languageCookie(language.value);
+  } catch {
+    // Nothing to do and nothing to say.
+  }
+};
+
+/**
+ * The chain: the URL wins, then the cookie, then the language the document was
+ * served in. `navigator.languages` is deliberately absent — Russian is reached
+ * only by an act of choosing, so the page a visitor gets never changes without an
+ * action of theirs.
+ */
+const restoreLanguage = (): void => {
+  const { language: chosen } = resolveLanguage({
+    urlParam: new URL(window.location.href).searchParams.get('lang'),
+    cookie: storedLanguage(),
+    supported: SUPPORTED_LANGUAGES,
+    fallback: DEFAULT_LANGUAGE,
+  });
+
+  language.value = chosen;
+
+  // The URL carries the resolved language from the start, not only after the
+  // control is used. Otherwise a visitor reading Russian on the bare URL — because
+  // their cookie says so — would copy an address that opens in whatever language
+  // the recipient's own cookie holds, and the canonical address would disagree
+  // with the one in the address bar.
+  rememberLanguageInUrl();
+
+  // A link someone was sent becomes their remembered choice, so the cookie always
+  // holds the last language they actually saw.
+  //
+  // Written on every visit, including the ones that resolved *from* the cookie:
+  // refreshing the expiry is the whole point. Skipping those visits meant the year
+  // never slid forward, so a reader who chose Russian once and afterwards always
+  // arrived on the bare URL lost it a year after that single choice — however
+  // often she had come back in between. She is the one visitor for whom this
+  // cookie is the only thing standing between her and an English page.
+  rememberLanguageInCookie();
 };
 
 language.addEventListener('change', () => {
   applyLanguage();
   rememberLanguageInUrl();
+  rememberLanguageInCookie();
 
   // A game already converted is re-rendered, so the visitor does not have to
   // paste it again to hear it in another language.
@@ -228,7 +348,7 @@ file.addEventListener('change', () => {
       convert();
     })
     .catch(() => {
-      announce(ui().fileFailed, 'error');
+      announce((strings) => strings.fileFailed, 'error');
     });
 });
 
@@ -237,19 +357,19 @@ copyButton.addEventListener('click', () => {
   if (text === '') {
     // The button stays focusable while there is nothing to copy, so say why
     // rather than doing nothing when it is pressed.
-    announce(ui().emptyResult, 'error');
+    announce((strings) => strings.emptyResult, 'error');
     return;
   }
 
   navigator.clipboard
     .writeText(text)
     .then(() => {
-      announce(ui().copied);
+      announce((strings) => strings.copied);
     })
     .catch(() => {
-      announce(ui().copyFailed, 'error');
+      announce((strings) => strings.copyFailed, 'error');
     });
 });
 
-restoreLanguageFromUrl();
+restoreLanguage();
 applyLanguage();
