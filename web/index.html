@@ -16,8 +16,8 @@
       name="description"
       content="Converts an SGF Go game record into plain text a screen reader can speak, with the coordinates of every move and the stones it captures."
     />
-    <meta name="theme-color" content="#f4f1ea" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#171614" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#eef0f3" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f1216" media="(prefers-color-scheme: dark)" />
 
     <!--
       The link-preview tags. main.ts rewrites the translatable ones, and rebuilds
@@ -65,6 +65,37 @@
     <style>
       /* Everything is inline: the page must make no network request, so that
          an unpublished game never leaves the browser. */
+      /* Sumi and ai: the two pigments a Go record was written with before it was
+         written in pixels — lampblack ink on cool paper, indigo for the marks
+         that carry a meaning of their own. Nothing here is warm, which is the
+         point: a terracotta accent reads as somebody else's brand, and this
+         page is not selling anything.
+
+         Four rules govern the tokens below, and each one is why a colour that
+         would otherwise be a matter of taste is fixed:
+
+         - `--accent` is identity, `--alert` is failure. One token cannot be
+           both. While the accent was red the two coincided by luck, and an
+           error looked like an error only because the brand happened to be the
+           colour of a warning. Indigo would have made the status line announce
+           a failure in the calm voice of the site's own colour.
+         - `--rule` draws hairlines that decorate; `--edge` draws the border
+           that tells you where a text field begins. WCAG asks 3:1 of the second
+           and nothing of the first, and a single token pitched to satisfy both
+           ends up too heavy for a divider or too faint for a control. The
+           field's sunk background is a hint, never the whole signal: it clears
+           the page by about 1.09:1, which is to say it is invisible to many of
+           the people this converter is built for. `--edge` has to clear 3:1 on
+           both of its sides — the page outside the field and the sunk fill
+           inside it — so a value chosen against the page alone is only half
+           checked; both schemes here hold at 3.2:1 or better against the fill.
+         - `--focus` is the ink itself rather than a tint of the accent, so the
+           ring never dissolves into the indigo button it is drawn around. It is
+           the most contrast either scheme can offer — 15.6:1 — and keyboard is
+           the primary way this page is operated.
+         - Every text pair carries at least 4.5:1 against the surface it sits
+           on, the dimmest being `--ink-soft` at 6.7:1 in light and 7.4:1 in
+           dark. */
       :root {
         /* Tells the browser to render its own widgets — scrollbars, the native
            select, form controls — in the matching scheme. Without it they stay
@@ -72,26 +103,34 @@
            draw ourselves. */
         color-scheme: light dark;
 
-        --paper: #f4f1ea;
-        --paper-sunk: #ebe6db;
-        --ink: #1c1a17;
-        --ink-soft: #55504a;
-        --rule: #cdc5b4;
-        --seal: #8c2f22;
-        --seal-soft: #b8503f;
-        --focus: #1c5d99;
+        --paper: #eef0f3;
+        --paper-sunk: #e3e7ec;
+        --ink: #14181d;
+        --ink-soft: #4d545d;
+        --rule: #ccd2da;
+        --edge: #767f8d;
+        --accent: #24408c;
+        --accent-hover: #182f6e;
+        --alert: #9b2226;
+        --focus: #14181d;
       }
 
+      /* The accent and its hover swap directions between the schemes, and the
+         names still hold: on paper the hover sinks deeper into the indigo, on
+         ink it rises towards the light. Both keep the label on the accent above
+         8:1, and the hover above 11:1. */
       @media (prefers-color-scheme: dark) {
         :root {
-          --paper: #171614;
-          --paper-sunk: #201e1b;
-          --ink: #ece7dc;
-          --ink-soft: #a8a196;
-          --rule: #3b3733;
-          --seal: #d2705c;
-          --seal-soft: #b8503f;
-          --focus: #7ab8f5;
+          --paper: #0f1216;
+          --paper-sunk: #171b21;
+          --ink: #e7eaef;
+          --ink-soft: #9aa3ae;
+          --rule: #2c3238;
+          --edge: #66707b;
+          --accent: #93b0ef;
+          --accent-hover: #b6cbf7;
+          --alert: #f08d8d;
+          --focus: #e7eaef;
         }
       }
 
@@ -109,7 +148,7 @@
         font-family: ui-serif, Georgia, 'Times New Roman', serif;
         font-size: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
         line-height: 1.6;
-        -webkit-tap-highlight-color: rgb(28 93 153 / 0.2);
+        -webkit-tap-highlight-color: rgb(36 64 140 / 0.2);
       }
 
       /* Off-screen until focused, so a keyboard user can jump past the header
@@ -121,7 +160,7 @@
         background: var(--paper);
         color: var(--ink);
         padding: 0.6rem 1rem;
-        border: 1px solid var(--seal);
+        border: 1px solid var(--accent);
         border-radius: 2px;
       }
 
@@ -154,7 +193,7 @@
       }
 
       h1 .mark {
-        color: var(--seal);
+        color: var(--accent);
       }
 
       h2 {
@@ -189,7 +228,7 @@
         font-size: 1rem;
         color: var(--ink);
         background: var(--paper-sunk);
-        border: 1px solid var(--rule);
+        border: 1px solid var(--edge);
         border-radius: 2px;
         padding: 0.7rem 0.8rem;
       }
@@ -245,8 +284,8 @@
         font-size: 1rem;
         padding: 0.6rem 1.4rem;
         border-radius: 2px;
-        border: 1px solid var(--seal);
-        background: var(--seal);
+        border: 1px solid var(--accent);
+        background: var(--accent);
         color: var(--paper);
         cursor: pointer;
         touch-action: manipulation;
@@ -254,12 +293,12 @@
 
       button.secondary {
         background: transparent;
-        color: var(--seal);
+        color: var(--accent);
       }
 
       button:hover:not([aria-disabled='true']) {
-        background: var(--seal-soft);
-        border-color: var(--seal-soft);
+        background: var(--accent-hover);
+        border-color: var(--accent-hover);
         color: var(--paper);
       }
 
@@ -272,7 +311,14 @@
       }
 
       /* A visible focus ring matters more here than anywhere else: keyboard
-         is the primary way this page is operated. */
+         is the primary way this page is operated.
+
+         The offset is load-bearing, not decoration. Ink against indigo is only
+         1.8:1 — on its own the ring would all but vanish on the button it is
+         meant to mark. The 2px gap puts the page between the two, and the page
+         against ink is 15.6:1, so the ring is read against the gap rather than
+         against the fill. Remove the offset and the ring quietly stops working
+         for exactly the users this page exists for. */
       :focus-visible {
         outline: 3px solid var(--focus);
         outline-offset: 2px;
@@ -285,7 +331,7 @@
       }
 
       #status[data-tone='error'] {
-        color: var(--seal);
+        color: var(--alert);
         font-weight: 600;
       }
 
@@ -296,8 +342,8 @@
         white-space: pre-wrap;
         overflow-wrap: break-word;
         background: var(--paper-sunk);
-        border: 1px solid var(--rule);
-        border-left: 3px solid var(--seal);
+        border: 1px solid var(--edge);
+        border-left: 3px solid var(--accent);
         border-radius: 2px;
         margin: 0;
         padding: 1rem 1.1rem;
