@@ -120,7 +120,16 @@ test('the served document holds no wording from the other language', () => {
     const other = UI[language];
     assert.ok(other !== undefined);
 
-    for (const key of ['title', 'description', 'tagline', 'convert', 'privacy'] as const) {
+    for (const key of [
+      'title',
+      'description',
+      'tagline',
+      'convert',
+      'privacy',
+      'share',
+      'keepSummary',
+      'keepInstruction',
+    ] as const) {
       assert.ok(
         !flat.includes(collapse(other[key])),
         `${language}.${key} must not appear in the served document`,
@@ -138,11 +147,126 @@ test('the visible strings are the served language’s', () => {
     'langLabel',
     'convert',
     'copy',
+    'share',
+    'keepSummary',
+    'keepInstruction',
     'resultHeading',
     'placeholder',
     'privacy',
   ] as const) {
     assert.ok(flat.includes(collapse(served[key])), `${key} is served as "${served[key]}"`);
+  }
+});
+
+test('the document declares its icons and its manifest', () => {
+  // The page shipped with none of these, so a home screen icon was a screenshot and
+  // an address — which is what a screen reader then reads out on her home screen.
+  assert.ok(
+    /<link rel="manifest" href="([^"]+)"/.test(html),
+    'a manifest, so an installed icon carries a name',
+  );
+  assert.ok(
+    /<link rel="apple-touch-icon"[^>]*href="([^"]+)"/.test(html),
+    'an apple-touch-icon: iOS accepts no SVG here',
+  );
+  assert.ok(/<link rel="icon"[^>]*href="([^"]+)"/.test(html), 'a favicon, which the page never had');
+});
+
+test('the home screen name is served, and is not the document title', () => {
+  const name = metaByName('apple-mobile-web-app-title');
+
+  assert.equal(name, served.appName, 'the served value is the served language’s icon label');
+  assert.notEqual(
+    name,
+    served.title,
+    'the title is a sentence; an icon label is truncated to about a dozen characters',
+  );
+});
+
+test('the icons and the manifest are asked of this origin', () => {
+  const references = [...html.matchAll(/<link rel="(?:manifest|icon|apple-touch-icon)"[^>]*>/g)].map(
+    (match) => match[0],
+  );
+
+  assert.ok(references.length > 0, 'there is something to check');
+
+  for (const reference of references) {
+    const href = /href="([^"]+)"/.exec(reference)?.[1] ?? '';
+
+    assert.doesNotMatch(
+      href,
+      /^https?:\/\//,
+      `${href} is relative: the page asks nothing of a third party, icons included`,
+    );
+  }
+});
+
+test('the share control is served, named, and never disabled', () => {
+  const button = /<button[^>]*id="share"[^>]*>([\s\S]*?)<\/button>/.exec(html);
+
+  assert.ok(button !== null, 'a share button exists in the actions row');
+  assert.ok(
+    collapse(button[1] ?? '').includes(collapse(served.share)),
+    'it carries its own accessible name as text, in the served language',
+  );
+  assert.doesNotMatch(
+    button[0] ?? '',
+    /aria-disabled/,
+    'unlike Copy, sharing is never in a state with nothing to act on',
+  );
+});
+
+test('the home screen instruction is a native disclosure', () => {
+  const details = /<details[^>]*>([\s\S]*?)<\/details>/.exec(html);
+
+  assert.ok(details !== null, 'the instruction is in a details element');
+
+  const body = details[1] ?? '';
+  const summary = /<summary[^>]*>([\s\S]*?)<\/summary>/.exec(body);
+
+  assert.ok(summary !== null, 'with a summary, so it is operable without script');
+  assert.ok(
+    collapse(summary[1] ?? '').includes(collapse(served.keepSummary)),
+    'the summary is the served language’s wording',
+  );
+  assert.ok(
+    collapse(body).includes(collapse(served.keepInstruction)),
+    'and the instruction itself is served, not left for the script to supply',
+  );
+});
+
+test('the field is described by its own messages and no others', () => {
+  // `#status` is what a screen reader reads out every time she reaches the field, so
+  // it may hold only what the field is about. The messages about the result, the
+  // clipboard and the address get their own region: one of them left in the
+  // description would introduce her game record with a sentence about the clipboard,
+  // long after the copying.
+  const described = attribute(/id="sgf"[\s\S]*?aria-describedby="([^"]*)"/);
+
+  assert.equal(described, 'status', 'exactly one region, and it is the field’s own');
+
+  const regions = [...html.matchAll(/<p id="([^"]+)" role="status"><\/p>/g)].map(
+    (match) => match[1],
+  );
+
+  assert.deepEqual(regions, ['status', 'notice'], 'two polite regions, in reading order');
+});
+
+test('both regions sit with the controls that produce their messages', () => {
+  // The requirement about a message staying with the field it describes is about the
+  // reader at high magnification, for whom a message at the other end of the page is
+  // a message never seen. Splitting the association must not move either one out of
+  // the department holding the buttons.
+  const form = /<form id="form"[^>]*>([\s\S]*?)<\/form>/.exec(html);
+
+  assert.ok(form !== null, 'the controls live in the form');
+
+  for (const region of ['status', 'notice']) {
+    assert.match(
+      form[1] ?? '',
+      new RegExp(`id="${region}"`),
+      `#${region} is beside the buttons, not at the other end of the page`,
+    );
   }
 });
 

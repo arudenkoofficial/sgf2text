@@ -29,6 +29,19 @@ export type UiStrings = {
   convert: string;
   copy: string;
   /**
+   * Named as a phrase rather than as the bare verb the other buttons use: a screen
+   * reader reaches this out of any context that would say what is being shared, and
+   * "Share" alone beside a game record reads as an offer to share the game.
+   */
+  share: string;
+  /**
+   * The name offered for a home screen icon, which is not the document title — that
+   * one is a sentence, and iOS truncates an icon label to about a dozen characters.
+   * Translated, because this label ends up among the reader's own language on her
+   * home screen and is read out there every time she looks for the tool.
+   */
+  appName: string;
+  /**
     * The two departments are headed rather than merely numbered: the numerals beside
     * them are decoration a screen reader is better off not reading, so the heading
     * carries the meaning and the numeral is hidden from the accessibility tree.
@@ -45,6 +58,23 @@ export type UiStrings = {
    */
   creditsBefore: string;
   creditsBetween: string;
+  /**
+   * The disclosure holding the home screen instruction. Collapsed by default: a
+   * reader who listens to the page linearly pays for every permanent paragraph on
+   * every visit, and this text is needed once.
+   */
+  keepSummary: string;
+  /**
+   * Why this is words rather than a button: on iOS, "Add to Home Screen" belongs to
+   * Safari's own share menu and is not reachable from a page's share sheet. The text
+   * says so, because a visitor who cannot find a control assumes she missed it — and
+   * looking for something that does not exist is the more expensive failure.
+   *
+   * Every control it mentions is named as a screen reader announces it. Instructions
+   * written for sighted readers say "the square with an arrow", which tells a blind
+   * visitor neither where the control is nor what she will hear when she reaches it.
+   */
+  keepInstruction: string;
   emptyInput: string;
   fileFailed: string;
   parseFailed: string;
@@ -53,6 +83,15 @@ export type UiStrings = {
   emptyResult: string;
   copied: string;
   copyFailed: string;
+  shared: string;
+  /**
+   * Distinct from `copied`, which describes the converted text. Two controls put two
+   * different things on the clipboard, and a visitor cannot look at it to find out
+   * which one she has.
+   */
+  addressCopied: string;
+  /** The last resort: names the browser's own control, since the page has nothing left to try. */
+  shareFailed: string;
 };
 
 /**
@@ -88,6 +127,8 @@ const CATALOGUE = {
     langLabel: 'Page language',
     convert: 'Convert',
     copy: 'Copy the Text',
+    share: 'Share the Page',
+    appName: 'SGF to text',
     inputHeading: 'Input',
     resultHeading: 'Result',
     placeholder: 'The game record will appear here.',
@@ -95,6 +136,9 @@ const CATALOGUE = {
     creditsBefore: 'The idea and the shape of the output come from ',
     creditsBetween:
       ', by the Japan Go Association for the Visually Impaired. Source code: ',
+    keepSummary: 'Keep this page on your home screen',
+    keepInstruction:
+      'Open your browser’s Share control and choose “Add to Home Screen”. In Safari on iPhone that control is in the toolbar at the bottom of the screen, and VoiceOver announces it as “Share”. This page cannot do it for you: adding an icon is the browser’s own action, and a page is not allowed to perform it.',
     emptyInput: 'The field is empty: paste a game record or choose a file.',
     fileFailed: 'The file could not be read.',
     parseFailed: 'The game record could not be parsed.',
@@ -110,6 +154,9 @@ const CATALOGUE = {
     emptyResult: 'There is nothing to copy yet: convert a game first.',
     copied: 'The text has been copied to the clipboard.',
     copyFailed: 'Copying failed. Select the result text and copy it manually.',
+    shared: 'The page has been shared.',
+    addressCopied: 'The address of this page has been copied to the clipboard.',
+    shareFailed: 'Sharing failed. Use your browser’s own Share control instead.',
   },
   ru: {
     htmlLang: 'ru',
@@ -126,12 +173,17 @@ const CATALOGUE = {
     langLabel: 'Язык страницы',
     convert: 'Преобразовать',
     copy: 'Скопировать текст',
+    share: 'Поделиться страницей',
+    appName: 'SGF в текст',
     inputHeading: 'Ввод',
     resultHeading: 'Результат',
     placeholder: 'Здесь появится запись партии.',
     privacy: 'Партия обрабатывается прямо в браузере и никуда не отправляется.',
     creditsBefore: 'Идея и структура вывода — ',
     creditsBetween: ', Японская ассоциация Го для незрячих. Исходный код: ',
+    keepSummary: 'Сохранить страницу на домашний экран',
+    keepInstruction:
+      'Откройте в браузере элемент «Поделиться» и выберите «На экран „Домой“». В Safari на iPhone этот элемент находится на панели инструментов внизу экрана, VoiceOver называет его «Поделиться». Сама страница этого сделать не может: добавление значка — действие браузера, странице оно недоступно.',
     emptyInput: 'Поле пустое: вставьте запись партии или выберите файл.',
     fileFailed: 'Не удалось прочитать файл.',
     parseFailed: 'Не удалось разобрать запись партии.',
@@ -147,6 +199,10 @@ const CATALOGUE = {
     emptyResult: 'Копировать пока нечего: сначала преобразуйте партию.',
     copied: 'Текст скопирован в буфер обмена.',
     copyFailed: 'Не удалось скопировать. Выделите текст результата и скопируйте вручную.',
+    shared: 'Страница отправлена.',
+    addressCopied: 'Адрес страницы скопирован в буфер обмена.',
+    shareFailed:
+      'Не удалось поделиться. Воспользуйтесь элементом «Поделиться» в самом браузере.',
   },
 } satisfies { [L in LocaleId]: UiStrings & { htmlLang: L } };
 

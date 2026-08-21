@@ -41,17 +41,25 @@ jobs:
       # control it — but shipping it keeps the artifact self-describing, and means
       # a switch back to branch-based publishing does not silently drop the domain.
       # The copies are enumerated rather than globbed, which is deliberate — but it
-      # means a new kind of asset has to be named here or it simply never ships.
-      # The fonts are the page's only subresources besides the bundle, and a
-      # missing one fails quietly: the browser falls back to a system face and the
-      # page merely looks wrong, with nothing in the build to say so.
+      # means a new kind of asset has to be named here or it simply never ships,
+      # and it fails quietly: a missing font falls back to a system face and a
+      # missing icon simply is not there, with nothing in the build to say so.
+      #
+      # `test/published-assets.test.ts` now reads this step and the document
+      # together, so an asset referenced but not copied fails CI rather than the
+      # live page. Adding a line here is still manual; forgetting one is not silent
+      # any more.
       - name: Assemble the site
         run: |
           mkdir -p _site
           cp web/index.html _site/
+          cp web/manifest.en.webmanifest _site/
+          cp web/manifest.ru.webmanifest _site/
           cp CNAME _site/
+
           cp -R web/dist _site/dist
           cp -R web/fonts _site/fonts
+          cp -R web/icons _site/icons
 
       - uses: actions/upload-pages-artifact@v5
         with:

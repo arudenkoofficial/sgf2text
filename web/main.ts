@@ -1,11 +1,15 @@
 import { isSgfError, sgfToText } from '../src/index.ts';
+import { fieldInvalidity } from './announcement.ts';
+import type { Destination, Standing, Tone } from './announcement.ts';
 import {
   LANGUAGE_COOKIE,
   languageCookie,
   readCookie,
   resolveLanguage,
 } from './language.ts';
-import { alternateLinks, canonicalUrl } from './metadata.ts';
+import { alternateLinks, canonicalUrl, manifestAddress } from './metadata.ts';
+import { shareThePage } from './share.ts';
+import type { ShareCapabilities } from './share.ts';
 import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, stringsFor } from './ui-strings.ts';
 import type { UiStrings } from './ui-strings.ts';
 
@@ -24,7 +28,9 @@ const file = need<HTMLInputElement>('#file');
 const language = need<HTMLSelectElement>('#lang');
 const convertButton = need<HTMLButtonElement>('#convert');
 const copyButton = need<HTMLButtonElement>('#copy');
+const shareButton = need<HTMLButtonElement>('#share');
 const status = need<HTMLParagraphElement>('#status');
+const notice = need<HTMLParagraphElement>('#notice');
 const result = need<HTMLPreElement>('#result');
 
 const ui = (): UiStrings => stringsFor(language.value);
@@ -43,25 +49,61 @@ const ui = (): UiStrings => stringsFor(language.value);
  * wording a screen reader then reads out with the wrong language's phonemes.
  */
 type Message = (strings: UiStrings) => string;
-type Announcement = { message: Message; tone: 'info' | 'error' };
+
+/**
+ * `tone` decides how it is drawn; `where` decides which region reads it out.
+ *
+ * They were one flag, which was right while every message concerned the game in the
+ * field. Sharing broke that: it can fail, so it needs the failure colour, but the
+ * record in the input is not what failed. A single flag would have marked that
+ * record invalid and pulled focus into it — announcing a problem with her game
+ * because the browser has no share sheet, and moving her somewhere she has no
+ * reason to be.
+ */
+type Announcement = Standing & {
+  message: Message;
+};
 
 let announcement: Announcement | null = null;
 
-const render = ({ message, tone }: Announcement): void => {
-  status.textContent = message(ui());
-  status.dataset.tone = tone;
+const render = ({ message, tone, where }: Announcement): void => {
+  const [speaking, quiet] = where === 'field' ? [status, notice] : [notice, status];
 
-  // The status is the field's description, so a failure has to mark the field
-  // invalid too — otherwise a screen reader reads the message but the input
-  // still sounds fine.
-  input.setAttribute('aria-invalid', tone === 'error' ? 'true' : 'false');
+  // One message at a time, so the region that is not speaking is emptied rather than
+  // left holding the last thing it said. A stale sentence in the other region would
+  // still be found by anyone reading the page in order, minutes after it was true.
+  // Emptying announces nothing: a polite region reports what appears in it, not what
+  // leaves.
+  if (quiet.textContent !== '') {
+    quiet.textContent = '';
+    delete quiet.dataset.tone;
+  }
+
+  speaking.textContent = message(ui());
+  speaking.dataset.tone = tone;
+
+  // The field's description is `#status`, so a failure about the record has to mark
+  // the field invalid too — otherwise a screen reader reads the message but the input
+  // still sounds fine. A message in the notice touches nothing here: the field is
+  // neither wrong nor newly right, and a standing mark on a record that failed to
+  // parse has to survive a share that had nothing to do with it.
+  const invalidity = fieldInvalidity({ tone, where });
+  if (invalidity !== null) {
+    input.setAttribute('aria-invalid', invalidity);
+  }
 };
 
-const announce = (message: Message, tone: 'info' | 'error' = 'info'): void => {
-  announcement = { message, tone };
+const announce = (
+  message: Message,
+  tone: Tone = 'info',
+  where: Destination = 'field',
+): void => {
+  announcement = { message, tone, where };
   render(announcement);
 
-  if (tone === 'error') {
+  // The same condition that marks the field invalid, asked once rather than restated:
+  // a field worth marking is a field worth sending her to.
+  if (fieldInvalidity(announcement) === 'true') {
     input.focus();
   }
 };
@@ -120,25 +162,40 @@ const convert = (): void => {
 };
 
 /**
- * The addresses are rebuilt from `location` rather than read from the HTML, so a
- * repository rename or a custom domain corrects itself for every visitor. The
- * hardcoded values in the document remain only as the floor for a crawler that
- * runs no JavaScript.
+ * The base every address on this page is built from, and it is built rather than read
+ * from the HTML so that a repository rename or a custom domain corrects itself for
+ * every visitor. The hardcoded values in the document remain only as the floor for a
+ * crawler that runs no JavaScript.
+ *
+ * Resolved against the directory rather than assembled from `origin` and `pathname`.
+ * Two reasons, both of which used to bite:
+ *
+ * `/sgf2text/index.html` and `/sgf2text/` are the same page, and building the base
+ * from `pathname` gave each of them a canonical address naming itself — so they
+ * competed as duplicates, which is the opposite of what the hreflang set is here to
+ * do. `new URL('.', …)` resolves both to the directory.
+ *
+ * And `origin` serialises to the string "null" in a document with an opaque origin,
+ * such as a sandboxed frame. `new URL('null' + '/sgf2text/')` is not a valid URL, so
+ * this threw — in the middle of translating the page, leaving the metadata in one
+ * language and every visible string in the other.
  */
+const pageBase = (): URL => new URL('.', window.location.href);
+
+/**
+ * The address the share control hands over: the same one the canonical link
+ * declares, so what is shared, what the address bar shows and what a search engine
+ * is told cannot become three different answers.
+ *
+ * Deliberately not `location.href`, which is usually right and occasionally not:
+ * `rememberLanguageInUrl` is wrapped in a `try` because Safari refuses history writes
+ * after enough of them, and that refusal is silent. So the address bar is the one
+ * source that can disagree with the language actually being read.
+ */
+const pageAddress = (): string => canonicalUrl(pageBase(), language.value);
+
 const applyAddresses = (chosen: string): void => {
-  // Resolved against the directory rather than assembled from `origin` and
-  // `pathname`. Two reasons, both of which used to bite:
-  //
-  // `/sgf2text/index.html` and `/sgf2text/` are the same page, and building the
-  // base from `pathname` gave each of them a canonical address naming itself — so
-  // they competed as duplicates, which is the opposite of what the hreflang set is
-  // here to do. `new URL('.', …)` resolves both to the directory.
-  //
-  // And `origin` serialises to the string "null" in a document with an opaque
-  // origin, such as a sandboxed frame. `new URL('null' + '/sgf2text/')` is not a
-  // valid URL, so this threw — in the middle of translating the page, leaving the
-  // metadata in one language and every visible string in the other.
-  const base = new URL('.', window.location.href);
+  const base = pageBase();
 
   need<HTMLLinkElement>('link[rel="canonical"]').href = canonicalUrl(base, chosen);
   need<HTMLMetaElement>('meta[property="og:url"]').content = canonicalUrl(base, chosen);
@@ -208,21 +265,54 @@ const applyVisible = (strings: UiStrings): void => {
   need('#input-heading').textContent = strings.inputHeading;
   need('#result-heading').textContent = strings.resultHeading;
   need('#privacy').textContent = strings.privacy;
+  need('#keep-summary').textContent = strings.keepSummary;
+  need('#keep-instruction').textContent = strings.keepInstruction;
   applyCredits(strings);
   convertButton.textContent = strings.convert;
   copyButton.textContent = strings.copy;
+  shareButton.textContent = strings.share;
   result.dataset.placeholder = strings.placeholder;
   reannounce();
 };
 
 /**
- * The visible page first, the metadata second.
+ * The name under the icon, once the page is on a home screen.
+ *
+ * Visitor-facing, so it is not part of the metadata block that crawlers read and that
+ * is allowed to fail — she reads this on her own home screen every time she goes
+ * looking for the tool. But it is also the only place in either block that has to find
+ * a tag before it can do anything, while the page works completely without it.
+ *
+ * So it runs last of everything, which is the one position where its failure costs
+ * only itself. It sat at the head of `applyVisible` first, where a renamed tag would
+ * have thrown before a single label was translated and left the page declaring one
+ * language over labels written in the other — the precise incoherence the ordering in
+ * `applyLanguage` exists to remove.
+ *
+ * Both sources of the name are rewritten, because which one the platform reads is not
+ * this page's decision: `apple-mobile-web-app-title`, and the manifest, of which there
+ * is one per language since a static file cannot follow a control. If a platform
+ * honours the swapped link she gets her own language; if it ignores it, it falls back
+ * to the served manifest and lands exactly where a single manifest would have left
+ * her. It cannot come out worse, and one manifest could come out wrong.
+ */
+const applyHomeScreenName = (strings: UiStrings): void => {
+  need<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]').content = strings.appName;
+  need<HTMLLinkElement>('link[rel="manifest"]').href = `./${manifestAddress(language.value)}`;
+};
+
+/**
+ * The visible page first, the metadata second, the home screen name last.
  *
  * These were one sequence with the metadata at the front, so a single missing tag
  * aborted the run and left every label in one language beneath metadata already
  * rewritten into the other — the precise incoherence this change exists to
  * remove. Ordered this way, a metadata failure costs a crawler its signal and
  * costs the visitor nothing.
+ *
+ * The order is what each failure costs, cheapest last: labels she is reading now,
+ * then a crawler's signal, then a name she will read the next time she looks at her
+ * home screen. Nothing follows the last one, so nothing can be taken down by it.
  *
  * A throw in here is our defect, not a condition of the visitor's browser, so
  * unlike the cookie and the address bar it is reported. The page makes no network
@@ -238,6 +328,8 @@ const applyLanguage = (): void => {
   } catch (error) {
     console.error('The page metadata could not be updated', error);
   }
+
+  applyHomeScreenName(strings);
 };
 
 form.addEventListener('submit', (event) => {
@@ -375,17 +467,78 @@ copyButton.addEventListener('click', () => {
   if (text === '') {
     // The button stays focusable while there is nothing to copy, so say why
     // rather than doing nothing when it is pressed.
-    announce((strings) => strings.emptyResult, 'error');
+    announce((strings) => strings.emptyResult, 'error', 'notice');
     return;
   }
 
   navigator.clipboard
     .writeText(text)
     .then(() => {
-      announce((strings) => strings.copied);
+      announce((strings) => strings.copied, 'info', 'notice');
     })
     .catch(() => {
-      announce((strings) => strings.copyFailed, 'error');
+      announce((strings) => strings.copyFailed, 'error', 'notice');
+    });
+});
+
+/**
+ * The two capabilities, read at press time rather than once at load: a permission
+ * can be granted between one press and the next.
+ *
+ * `share` is bound because `navigator.share` called detached loses its receiver. It
+ * is offered only when it is a function, and even then the call may be refused —
+ * which is why `shareThePage` decides by outcome rather than trusting this check.
+ *
+ * `copy` reaches through `navigator.clipboard`, which is absent on an insecure
+ * origin; the property access throws, the promise rejects, and the fallback path
+ * treats it as the failure it is.
+ */
+const shareCapabilities = (): ShareCapabilities => ({
+  share:
+    typeof navigator.share === 'function' ? navigator.share.bind(navigator) : undefined,
+  copy: async (text: string) => {
+    await navigator.clipboard.writeText(text);
+  },
+});
+
+shareButton.addEventListener('click', () => {
+  shareThePage(shareCapabilities(), {
+    title: ui().title,
+    url: pageAddress(),
+  })
+    .then((outcome) => {
+      if (outcome === 'cancelled') {
+        // She closed the sheet. Nothing happened, and saying so would report a
+        // failure for a decision she made on purpose.
+        return;
+      }
+
+      // Marked as being about the page even though nothing in `render` consults
+      // `about` for a success today. The flag records what the message concerns, not
+      // what happens to be read from it: these two are about the address of the page,
+      // and leaving them claiming otherwise is how the next reader of `about` — or
+      // the next use of it — quietly mis-routes them.
+      if (outcome === 'shared') {
+        announce((strings) => strings.shared, 'info', 'notice');
+        return;
+      }
+
+      if (outcome === 'copied') {
+        announce((strings) => strings.addressCopied, 'info', 'notice');
+        return;
+      }
+
+      // Drawn in the failure colour, but marked as being about the page: the game in
+      // the field is not what failed, so it is not marked invalid and does not take
+      // focus. The message names the browser's own share control, which is all the
+      // page has left to offer.
+      announce((strings) => strings.shareFailed, 'error', 'notice');
+    })
+    .catch(() => {
+      // `shareThePage` is documented never to reject, and this is the backstop for
+      // that promise being broken: silence is the one outcome a blind visitor cannot
+      // detect, so something is always said.
+      announce((strings) => strings.shareFailed, 'error', 'notice');
     });
 });
 
