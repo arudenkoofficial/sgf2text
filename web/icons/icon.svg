@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="A stone on a board">
+  <!--
+    A stone placed on an intersection: the crossing sits at the centre and the stone
+    covers it, so what is left visible is four line stubs and a disc. That is the one
+    thing that still reads at sixteen pixels, which is the size this has to survive
+    in a browser tab.
+
+    Full-bleed rather than rounded. Every platform masks the corners itself — iOS
+    rounds an apple-touch-icon, Android masks a maskable icon — and a shape that
+    arrives pre-rounded gets rounded twice. The stone sits well inside the centred
+    circle a maskable icon is cropped to; the lines are decoration and may be cut.
+
+    The green is the page's light-scheme accent, which was chosen against a measured
+    contrast rather than by eye.
+  -->
+  <rect width="512" height="512" fill="#4c5c1a" />
+  <g stroke="#fafafa" stroke-width="20" opacity="0.45">
+    <line x1="256" y1="0" x2="256" y2="512" />
+    <line x1="0" y1="256" x2="512" y2="256" />
+  </g>
+  <circle cx="256" cy="256" r="132" fill="#fafafa" />
+</svg>

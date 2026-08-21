@@ -53,3 +53,18 @@ export const alternateLinks = (
   ...supported.map((language) => ({ hreflang: language, href: addressFor(base, language) })),
   { hreflang: 'x-default', href: addressFor(base, null) },
 ];
+
+/**
+ * Which manifest belongs to a language.
+ *
+ * A manifest is a static file and cannot follow the language control, so there is one
+ * per language and the page swaps the link. Derived from the language rather than
+ * listed in the catalogue, so adding a language cannot produce an entry that names a
+ * file nobody wrote — the file is either there under the derived name or the suite
+ * says so.
+ *
+ * Relative, like every other address this page builds: the host lives in CNAME and
+ * nowhere else.
+ */
+export const manifestAddress = (language: string): string =>
+  `manifest.${language}.webmanifest`;

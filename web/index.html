@@ -20,6 +20,32 @@
     <meta name="theme-color" content="#101215" media="(prefers-color-scheme: dark)" />
 
     <!--
+      The icons, and the name an icon is given.
+
+      Reaching a page through a browser costs a screen reader user a sequence of
+      gestures every time — the address bar, the address, the confirmation. An icon
+      on the home screen is one target. The page shipped without any of these, so
+      what iOS put on a home screen was a screenshot labelled with a fragment of the
+      address, which is then what VoiceOver reads out there.
+
+      The name can be read from two places, and which one wins is the platform's
+      decision: apple-mobile-web-app-title here, and short_name in the manifest, which
+      WebKit began reading in Safari 16.4. So both carry the chosen language rather
+      than one of them being left to hold a name she does not read. The meta tag is
+      rewritten by main.ts; a manifest is a static file and cannot follow a control, so
+      there is one per language and the href below is swapped by the same function.
+
+      Every href here is relative. The page asks nothing of a third party, and an
+      icon service would be exactly the kind of request the footer's promise cannot
+      be audited against.
+    -->
+    <link rel="manifest" href="./manifest.en.webmanifest" />
+    <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+    <link rel="icon" href="./icons/icon-192.png" sizes="192x192" type="image/png" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" sizes="180x180" />
+    <meta name="apple-mobile-web-app-title" content="SGF to text" />
+
+    <!--
       The link-preview tags. main.ts rewrites the translatable ones and rebuilds
       every address below from `location`, which corrects them for a visitor —
       and for a visitor only. This comment used to say a rename or a custom
@@ -439,8 +465,12 @@
 
       /* Sits with the buttons that produce it, in the same department as the field
          it describes: an error announced at the other end of the page is an error a
-         reader with magnification never sees. */
-      #status {
+         reader with magnification never sees.
+
+         The line of height is reserved here rather than on either paragraph, because
+         the two never speak at once: one message at a time, in whichever of them it
+         belongs to, and the page must not shift as it moves between them. */
+      .announcements {
         min-height: 1.6em;
         font-family: 'JetBrains Mono', ui-monospace, monospace;
         font-size: 0.8rem;
@@ -448,7 +478,11 @@
         margin: 0 0 0.7rem;
       }
 
-      #status[data-tone='error'] {
+      .announcements p {
+        margin: 0;
+      }
+
+      .announcements p[data-tone='error'] {
         color: var(--alert);
         font-weight: 500;
       }
@@ -570,15 +604,40 @@
               <button type="button" id="copy" class="secondary" aria-disabled="true">
                 Copy the Text
               </button>
+              <!--
+                No aria-disabled, unlike Copy: sharing the page never depends on a
+                conversion having happened, so there is no state in which this button
+                has nothing to do.
+
+                Named as a phrase rather than the bare verb the others use. A screen
+                reader reaches it out of any context that would say what is being
+                shared, and "Share" sitting beside a game record reads as an offer to
+                share the game — which is the one thing this button never does.
+              -->
+              <button type="button" id="share" class="secondary">Share the Page</button>
             </div>
 
             <!--
-              The field's own description, so it stays in the field's department
-              rather than beside the result. role="status" carries an implicit
-              polite live region, which is what announces a conversion or a failure
-              without interrupting whatever is being read.
+              Two polite regions, both in the field's department rather than beside
+              the result: role="status" carries an implicit polite live region, which
+              is what announces a conversion or a failure without interrupting
+              whatever is being read.
+
+              They are separate because only the first is the field's own
+              description. `aria-describedby` is read out every time she reaches the
+              field, so a message put there outlives the moment it was about — and
+              "the address of this page has been copied" would become part of how the
+              page introduces her game record.
+
+              So #status holds what the record is about, and #notice holds what the
+              result, the clipboard and the address are about. Only one of the two ever
+              carries text, which is why the height of one line is reserved around
+              both rather than by each.
             -->
-            <p id="status" role="status"></p>
+            <div class="announcements">
+              <p id="status" role="status"></p>
+              <p id="notice" role="status"></p>
+            </div>
           </form>
         </section>
 
@@ -601,6 +660,29 @@
       </main>
 
       <footer>
+        <!--
+          Collapsed, and native. A reader who listens to the page linearly pays for
+          every permanent paragraph on every visit, and this text is needed once — so
+          it is one item to skip rather than four lines to sit through. `details`
+          already has the semantics and the keyboard behaviour, so no script is
+          involved in opening it.
+
+          It exists because the page cannot do what it describes: on iOS, "Add to
+          Home Screen" belongs to Safari's own share menu and is unreachable from a
+          page's share sheet. The text says so outright, since a visitor who cannot
+          find a control assumes she missed it, and hunting for something that does
+          not exist is the more expensive failure.
+        -->
+        <details id="keep">
+          <summary id="keep-summary">Keep this page on your home screen</summary>
+          <p id="keep-instruction">
+            Open your browser’s Share control and choose “Add to Home Screen”. In
+            Safari on iPhone that control is in the toolbar at the bottom of the
+            screen, and VoiceOver announces it as “Share”. This page cannot do it for
+            you: adding an icon is the browser’s own action, and a page is not allowed
+            to perform it.
+          </p>
+        </details>
         <p id="privacy">
           The game is converted in your browser and is never sent anywhere.
         </p>

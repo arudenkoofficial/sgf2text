@@ -77,6 +77,66 @@ test('each language declares itself as the document language', () => {
   }
 });
 
+/**
+ * The completeness test above compares the languages against each other, which
+ * catches a key present in one and missing from the other — and passes happily when
+ * a key was forgotten in both. These name the strings this page cannot do without.
+ */
+test('the sharing and home screen strings are present in every language', () => {
+  const required = [
+    'share',
+    'shared',
+    'addressCopied',
+    'shareFailed',
+    'appName',
+    'keepSummary',
+    'keepInstruction',
+  ] as const;
+
+  for (const language of SUPPORTED_LANGUAGES) {
+    const strings = UI[language];
+    assert.ok(strings !== undefined);
+
+    for (const key of required) {
+      assert.equal(
+        typeof strings[key],
+        'string',
+        `${language}.${key} is a string the page reads out`,
+      );
+      assert.notEqual((strings[key] as string).trim(), '', `${language}.${key} says something`);
+    }
+  }
+});
+
+test('copying an address is not announced as copying the game', () => {
+  // Two different things land on the clipboard from two different controls. One
+  // message for both would tell a visitor the text was copied when what she has is
+  // an address, and she cannot look at the clipboard to find out otherwise.
+  for (const language of SUPPORTED_LANGUAGES) {
+    const strings = UI[language];
+    assert.ok(strings !== undefined);
+
+    assert.notEqual(
+      strings.addressCopied,
+      strings.copied,
+      `${language} distinguishes the address from the converted text`,
+    );
+  }
+});
+
+test('the home screen name is short enough to survive a home screen', () => {
+  // iOS truncates the label under an icon. A name that arrives cut in half is worse
+  // than a short one, and this is the label VoiceOver reads on her home screen.
+  for (const language of SUPPORTED_LANGUAGES) {
+    const name = UI[language]?.appName ?? '';
+
+    assert.ok(
+      name.length <= 15,
+      `${language}.appName is ${name.length} characters: "${name}" — too long for an icon label`,
+    );
+  }
+});
+
 test('each language names its own locale for a link preview', () => {
   for (const language of SUPPORTED_LANGUAGES) {
     assert.match(
