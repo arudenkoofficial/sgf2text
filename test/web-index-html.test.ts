@@ -201,19 +201,84 @@ test('the icons and the manifest are asked of this origin', () => {
   }
 });
 
-test('the share control is served, named, and never disabled', () => {
-  const button = /<button[^>]*id="share"[^>]*>([\s\S]*?)<\/button>/.exec(html);
+const shareControls = (): string[] =>
+  [...html.matchAll(/<button[^>]*id="share-[^"]*"[^>]*>[\s\S]*?<\/button>/g)].map(
+    (match) => match[0],
+  );
 
-  assert.ok(button !== null, 'a share button exists in the actions row');
-  assert.ok(
-    collapse(button[1] ?? '').includes(collapse(served.share)),
-    'it carries its own accessible name as text, in the served language',
-  );
-  assert.doesNotMatch(
-    button[0] ?? '',
-    /aria-disabled/,
-    'unlike Copy, sharing is never in a state with nothing to act on',
-  );
+test('sharing is offered twice, and named once', () => {
+  // Two places because neither the visitor at the top of the page nor the one who has
+  // read to the bottom should have to travel to the other end. One name because they
+  // do the same thing, and two names would promise a difference that does not exist.
+  const controls = shareControls();
+
+  assert.equal(controls.length, 2, 'one in the masthead, one in the footer');
+
+  for (const control of controls) {
+    assert.ok(
+      collapse(control).includes(collapse(served.share)),
+      'each carries its own accessible name as text, in the served language',
+    );
+    assert.doesNotMatch(
+      control,
+      /aria-disabled/,
+      'unlike Copy, sharing is never in a state with nothing to act on',
+    );
+  }
+});
+
+test('sharing is not offered among the conversion controls', () => {
+  // Where it was, and why it was missed: everything else in that row acts on the game
+  // record, so a third button there read as a third thing done to the game.
+  const actions = /<div class="actions">([\s\S]*?)<\/div>/.exec(html);
+
+  assert.ok(actions !== null, 'the form has an actions row');
+
+  const row = actions[1] ?? '';
+  const buttons = [...row.matchAll(/<button[^>]*id="([^"]+)"/g)].map((match) => match[1]);
+
+  assert.deepEqual(buttons, ['convert', 'copy'], 'the game’s controls, and only those');
+});
+
+test('each share control stands in a page-level department', () => {
+  for (const [department, control] of [
+    ['header', 'share-top'],
+    ['footer', 'share-bottom'],
+  ] as const) {
+    const block = new RegExp(`<${department}[\\s\\S]*?</${department}>`).exec(html);
+
+    assert.ok(block !== null, `the document has a ${department}`);
+    assert.match(
+      block[0],
+      new RegExp(`id="${control}"`),
+      `${control} is where the page’s own actions are`,
+    );
+  }
+});
+
+test('the mark beside each name is decorative', () => {
+  // It is there to catch a sighted eye. To a screen reader it is nothing, and it is
+  // never what names the control — the text is.
+  const controls = shareControls();
+
+  assert.equal(controls.length, 2, 'both controls are checked, so neither loop runs empty');
+
+  for (const control of controls) {
+    const svg = /<svg[^>]*>/.exec(control);
+
+    assert.ok(svg !== null, 'the control carries a mark');
+    assert.match(svg[0], /aria-hidden="true"/, 'hidden from assistive technology');
+    assert.match(svg[0], /focusable="false"/, 'and not a tab stop of its own');
+    assert.doesNotMatch(control, /aria-label/, 'the name comes from the text, not from a label');
+
+    // The label is its own element so that translating it cannot reach the mark. Write
+    // to the button's text instead and the glyph is deleted the first time the language
+    // changes — which is a failure nobody would see in English.
+    const label = /<span class="label">([\s\S]*?)<\/span>/.exec(control);
+
+    assert.ok(label !== null, 'the label is an element of its own, not the button’s text');
+    assert.equal(collapse(label[1] ?? '').trim(), collapse(served.share));
+  }
 });
 
 test('the home screen instruction is a native disclosure', () => {
@@ -249,7 +314,37 @@ test('the field is described by its own messages and no others', () => {
     (match) => match[1],
   );
 
-  assert.deepEqual(regions, ['status', 'notice'], 'two polite regions, in reading order');
+  assert.deepEqual(
+    regions,
+    ['notice-top', 'status', 'notice', 'notice-bottom'],
+    'a region for the field, and one beside each control that speaks',
+  );
+});
+
+test('every share control has its own region beside it', () => {
+  // One region cannot be beside two controls at opposite ends of a page, and a reader
+  // at high magnification sees only the part of the page she is in — so a confirmation
+  // drawn at the other end is one she never sees.
+  const groups = [...html.matchAll(/<div class="share">([\s\S]*?)<\/div>/g)].map(
+    (match) => match[1] ?? '',
+  );
+
+  assert.equal(groups.length, 2, 'each control is grouped with its own answer');
+
+  for (const [control, own] of [
+    ['share-top', 'notice-top'],
+    ['share-bottom', 'notice-bottom'],
+  ] as const) {
+    const group = groups.find((candidate) => candidate.includes(`id="${control}"`));
+
+    assert.ok(group !== undefined, `${control} is in a group of its own`);
+    assert.match(group, new RegExp(`id="${own}"`), `and ${own} is the region in that group`);
+    assert.doesNotMatch(
+      group,
+      /role="status"[\s\S]*role="status"/,
+      'one region per control, so an answer cannot be drawn twice',
+    );
+  }
 });
 
 test('both regions sit with the controls that produce their messages', () => {

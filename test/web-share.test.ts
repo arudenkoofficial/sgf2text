@@ -168,3 +168,72 @@ test('the payload reaches the sheet unchanged', async () => {
     'the title travels with the address: a bare URL in a chat says nothing about what it opens',
   );
 });
+
+/**
+ * A second press while the first sheet is still open.
+ *
+ * Found by pressing the control twice in a browser, and easy to reach once the same
+ * action is offered in two places: the other control is right there while the sheet
+ * stands. `navigator.share` refuses the second call with `InvalidStateError` — "an
+ * earlier share has not yet completed" — which is not a cancellation, so it used to
+ * fall through to the clipboard: the page overwrote whatever she was holding and told
+ * her the address had been copied, while the sheet she opened might still succeed.
+ *
+ * The browser is the one that knows whether a share is outstanding, so the browser is
+ * asked. A boolean of our own answered the same question from memory, and the two
+ * disagreed in exactly the case where ours could never recover — see the test below.
+ */
+test('a second press while a sheet is open is refused, not redirected', async () => {
+  const busy = new Error('An earlier share has not yet completed.');
+  busy.name = 'InvalidStateError';
+
+  const { capabilities, shared, copied } = recorder({ share: busy, copy: 'ok' });
+
+  const outcome = await shareThePage(capabilities, PAYLOAD);
+
+  assert.equal(
+    outcome,
+    'busy',
+    'an outcome she is still waiting for is not an outcome to report',
+  );
+  assert.equal(shared.length, 1, 'the browser was asked, and it answered');
+  assert.deepEqual(
+    copied,
+    [],
+    'her clipboard is left alone: the sheet she opened may still succeed',
+  );
+});
+
+test('an unanswered sheet does not disable sharing for the rest of the visit', async () => {
+  // The regression this exists to prevent, and it shipped: a guard held open until
+  // `navigator.share` settled, and a promise that never settles held it open forever.
+  // Both controls then answered every press with nothing at all — and silence is the
+  // one outcome a blind visitor cannot detect. Demonstrated in a browser: after one
+  // such press the page went mute while its clipboard was still working.
+  //
+  // So this asserts there is no state here to latch. A press that follows an
+  // unanswered one reaches the browser, which either refuses it — the test above — or
+  // has forgotten and opens the sheet. Either way the page recovers, which a boolean
+  // of ours could not.
+  let opened = 0;
+
+  const capabilities: ShareCapabilities = {
+    share: async () => {
+      opened += 1;
+
+      if (opened === 1) {
+        // Never settles, exactly like a sheet nobody has answered.
+        await new Promise<void>(() => {});
+      }
+    },
+    copy: async () => {
+      throw new Error('the clipboard must not be reached in either press');
+    },
+  };
+
+  void shareThePage(capabilities, PAYLOAD);
+  const second = await shareThePage(capabilities, PAYLOAD);
+
+  assert.equal(second, 'shared', 'the second press is answered on its own merits');
+  assert.equal(opened, 2, 'and it reached the browser rather than a memory of one');
+});
