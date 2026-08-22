@@ -1,6 +1,11 @@
 import { isSgfError, sgfToText } from '../src/index.ts';
-import { fieldInvalidity } from './announcement.ts';
-import type { Destination, Standing, Tone } from './announcement.ts';
+import {
+  destinationFor,
+  fieldInvalidity,
+  staleRegions,
+  survivesRestatement,
+} from './announcement.ts';
+import type { Destination, Standing, Subject, Tone } from './announcement.ts';
 import {
   LANGUAGE_COOKIE,
   languageCookie,
@@ -13,8 +18,8 @@ import type { ShareCapabilities } from './share.ts';
 import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, stringsFor } from './ui-strings.ts';
 import type { UiStrings } from './ui-strings.ts';
 
-const need = <T extends Element>(selector: string): T => {
-  const element = document.querySelector<T>(selector);
+const need = <T extends Element>(selector: string, within: ParentNode = document): T => {
+  const element = within.querySelector<T>(selector);
   if (element === null) {
     throw new Error(`The page is missing ${selector}`);
   }
@@ -28,10 +33,45 @@ const file = need<HTMLInputElement>('#file');
 const language = need<HTMLSelectElement>('#lang');
 const convertButton = need<HTMLButtonElement>('#convert');
 const copyButton = need<HTMLButtonElement>('#copy');
-const shareButton = need<HTMLButtonElement>('#share');
-const status = need<HTMLParagraphElement>('#status');
-const notice = need<HTMLParagraphElement>('#notice');
+const shareButtons = [
+  need<HTMLButtonElement>('#share-top'),
+  need<HTMLButtonElement>('#share-bottom'),
+];
 const result = need<HTMLPreElement>('#result');
+
+/**
+ * A place a message can be said, and what saying it there means.
+ *
+ * `kind` is the whole of the semantics: `field` is the region the game field names in
+ * `aria-describedby`, so it may hold only what the record is about. Everything else is
+ * a notice — an event, said beside the control that caused it.
+ *
+ * Four of them, because the same action is offered in two places and one region cannot
+ * sit beside two controls at opposite ends of a page. Only ever one holds text.
+ */
+type Region = {
+  kind: Destination;
+  node: HTMLParagraphElement;
+};
+
+const fieldRegion: Region = { kind: 'field', node: need<HTMLParagraphElement>('#status') };
+
+const noticeFor = (selector: string): Region => ({
+  kind: 'notice',
+  node: need<HTMLParagraphElement>(selector),
+});
+
+const resultNotice = noticeFor('#notice');
+const shareNotices = new Map<HTMLButtonElement, Region>([
+  [shareButtons[0] as HTMLButtonElement, noticeFor('#notice-top')],
+  [shareButtons[1] as HTMLButtonElement, noticeFor('#notice-bottom')],
+]);
+
+const regions: readonly Region[] = [
+  fieldRegion,
+  resultNotice,
+  ...shareNotices.values(),
+];
 
 const ui = (): UiStrings => stringsFor(language.value);
 
@@ -51,59 +91,103 @@ const ui = (): UiStrings => stringsFor(language.value);
 type Message = (strings: UiStrings) => string;
 
 /**
- * `tone` decides how it is drawn; `where` decides which region reads it out.
+ * `tone` decides how it is drawn; `subject` decides everything else — which region it
+ * is said in, and therefore what it means for the game field.
  *
- * They were one flag, which was right while every message concerned the game in the
- * field. Sharing broke that: it can fail, so it needs the failure colour, but the
- * record in the input is not what failed. A single flag would have marked that
- * record invalid and pulled focus into it — announcing a problem with her game
- * because the browser has no share sheet, and moving her somewhere she has no
- * reason to be.
+ * These were two arguments and then one, and this is the third arrangement. A separate
+ * "is this about the record" flag could contradict the region it travelled with;
+ * naming the region alone removed the contradiction but left the subject unstated, so
+ * the choice of region was a habit no test could read. Now the call site states the one
+ * thing it knows and the rest follows from it.
  */
-type Announcement = Standing & {
+type Announcement = {
+  subject: Subject;
   message: Message;
+  tone: Tone;
+  region: Region;
 };
+
+const standing = ({ tone, region }: Announcement): Standing => ({ tone, where: region.kind });
 
 let announcement: Announcement | null = null;
 
-const render = ({ message, tone, where }: Announcement): void => {
-  const [speaking, quiet] = where === 'field' ? [status, notice] : [notice, status];
+/**
+ * Written every time, including when the sentence is the one already there.
+ *
+ * This used to return early on an unchanged sentence, and that was the second press of
+ * every control going unanswered: a polite region reports what appears in it, and a
+ * sentence left in place never appears. Measured rather than argued — two presses of the
+ * copy control recorded one DOM mutation and then none. She presses again precisely
+ * because she is unsure the first press registered, and silence is the one answer she
+ * cannot investigate.
+ *
+ * Nothing is lost by writing unconditionally. Assigning `''` to a region that is already
+ * empty records no mutation at all — measured too — so the clearing loop in `render`
+ * costs nothing on the three regions that had nothing to clear.
+ */
+const say = (region: Region, text: string, tone: Tone | null): void => {
+  region.node.textContent = text;
 
-  // One message at a time, so the region that is not speaking is emptied rather than
-  // left holding the last thing it said. A stale sentence in the other region would
-  // still be found by anyone reading the page in order, minutes after it was true.
-  // Emptying announces nothing: a polite region reports what appears in it, not what
-  // leaves.
-  if (quiet.textContent !== '') {
-    quiet.textContent = '';
-    delete quiet.dataset.tone;
+  if (tone === null) {
+    delete region.node.dataset.tone;
+    return;
   }
 
-  speaking.textContent = message(ui());
-  speaking.dataset.tone = tone;
+  region.node.dataset.tone = tone;
+};
+
+const render = (current: Announcement): void => {
+  const { message, tone, region } = current;
+
+  // Emptying the notices that are no longer true, and only those. A polite region
+  // reports what appears in it rather than what leaves, so this announces nothing —
+  // and `say` skips a region that already holds what it is being given, so re-rendering
+  // in a new language cannot make an empty region speak.
+  //
+  // The field's description is never in this set. It is the condition of the field
+  // rather than an event, and clearing it used to leave a record marked invalid with
+  // nothing on the page saying why.
+  for (const stale of staleRegions(regions, region)) {
+    say(stale, '', null);
+  }
+
+  say(region, message(ui()), tone);
 
   // The field's description is `#status`, so a failure about the record has to mark
   // the field invalid too — otherwise a screen reader reads the message but the input
-  // still sounds fine. A message in the notice touches nothing here: the field is
+  // still sounds fine. A message in a notice touches nothing here: the field is
   // neither wrong nor newly right, and a standing mark on a record that failed to
   // parse has to survive a share that had nothing to do with it.
-  const invalidity = fieldInvalidity({ tone, where });
+  const invalidity = fieldInvalidity(standing(current));
   if (invalidity !== null) {
     input.setAttribute('aria-invalid', invalidity);
   }
 };
 
+/**
+ * `notice` says which notice, for the messages that are said in one. It is only ever
+ * needed by the share controls, since they are the same action offered twice and the
+ * answer belongs beside the one that was pressed; everything else has a single home and
+ * takes the default.
+ *
+ * Whether a notice is used at all is not this argument's business — `destinationFor`
+ * decides that from the subject, so a message about the record cannot be talked into
+ * the footer by passing one.
+ */
 const announce = (
+  subject: Subject,
   message: Message,
   tone: Tone = 'info',
-  where: Destination = 'field',
+  notice: Region = resultNotice,
 ): void => {
-  announcement = { message, tone, where };
+  const region = destinationFor(subject) === 'field' ? fieldRegion : notice;
+
+  announcement = { subject, message, tone, region };
   render(announcement);
 
   // The same condition that marks the field invalid, asked once rather than restated:
   // a field worth marking is a field worth sending her to.
-  if (fieldInvalidity(announcement) === 'true') {
+  if (fieldInvalidity(standing(announcement)) === 'true') {
     input.focus();
   }
 };
@@ -113,10 +197,61 @@ const announce = (
  * `announce`: moving focus belongs to the failure that caused the message, not to
  * a later change of language. A visitor operating the language control must not
  * be thrown out of it and into the game field.
+ *
+ * A message that has stopped being true is dropped rather than translated. Restating a
+ * failure is restating something still in force; restating "the address of this page has
+ * been copied" announces a copy that is not happening, which is what the page did until
+ * now. It is forgotten as well as cleared, so a second change of language cannot bring
+ * it back.
  */
 const reannounce = (): void => {
-  if (announcement !== null) {
-    render(announcement);
+  if (announcement === null) {
+    return;
+  }
+
+  if (!survivesRestatement(standing(announcement))) {
+    say(announcement.region, '', null);
+    announcement = null;
+    return;
+  }
+
+  render(announcement);
+};
+
+/**
+ * The field's description and its mark are a verdict on one particular record. She
+ * replaces the record, and the verdict is about something that no longer exists — so it
+ * goes when she edits, rather than standing until the next conversion and telling a
+ * screen reader that a record the page has never examined is wrong.
+ *
+ * The mark is removed rather than set to `'false'`: there is no verdict now, and
+ * `'false'` is a verdict — it would claim the new record is valid, which nothing checked.
+ *
+ * Only the record's own message. A notice about the clipboard or the page has nothing to
+ * do with what she is typing, and clearing it would make editing the field a way to erase
+ * an answer she has not read yet.
+ *
+ * Read from the field itself rather than from `announcement`, and the first attempt got
+ * this wrong in exactly the way this file's own distinction predicts. `announcement` is
+ * the last thing the page *said*; the field's description is a state that outlives it. So
+ * a failed conversion followed by a share leaves the verdict standing in the field while
+ * the last announcement is the share's — and asking `announcement` then reports no
+ * verdict to clear. Which is the same mistake as keeping our own flag for an open share
+ * sheet: one variable answering for two independent facts.
+ *
+ * The standing announcement is forgotten only when it is the one being cleared, so a
+ * later change of language cannot restate it.
+ */
+const forgetTheVerdict = (): void => {
+  if (fieldRegion.node.textContent === '' && !input.hasAttribute('aria-invalid')) {
+    return;
+  }
+
+  say(fieldRegion, '', null);
+  input.removeAttribute('aria-invalid');
+
+  if (announcement !== null && announcement.region.kind === 'field') {
+    announcement = null;
   }
 };
 
@@ -135,7 +270,7 @@ const convert = (): void => {
 
   if (sgf === '') {
     showResult('');
-    announce((strings) => strings.emptyInput, 'error');
+    announce('record', (strings) => strings.emptyInput, 'error');
     return;
   }
 
@@ -143,7 +278,7 @@ const convert = (): void => {
     const text = sgfToText(input.value, { locale: language.value });
     const moves = countMoves(text);
     showResult(text);
-    announce((strings) => strings.done(moves));
+    announce('record', (strings) => strings.done(moves));
   } catch (error) {
     // The input is left exactly as the visitor typed it, so it can be corrected.
     // Only translated wording is announced: the library's own messages are
@@ -155,6 +290,7 @@ const convert = (): void => {
     const code = isSgfError(error) ? error.code : null;
     showResult('');
     announce(
+      'record',
       (strings) => (code === null ? strings.parseFailed : strings.errors[code]),
       'error',
     );
@@ -270,7 +406,12 @@ const applyVisible = (strings: UiStrings): void => {
   applyCredits(strings);
   convertButton.textContent = strings.convert;
   copyButton.textContent = strings.copy;
-  shareButton.textContent = strings.share;
+  for (const button of shareButtons) {
+    // The label is its own element, so translating it cannot reach the mark beside it.
+    // Writing to the button's text would have deleted the glyph, and relying on the
+    // last child would have deleted it the day somebody reformatted the markup.
+    need('.label', button).textContent = strings.share;
+  }
   result.dataset.placeholder = strings.placeholder;
   reannounce();
 };
@@ -445,11 +586,23 @@ language.addEventListener('change', () => {
   }
 });
 
+// Typing or pasting replaces the record, which retires whatever the page last said about
+// the old one. Not fired by the page's own writes, so reading a file still converts and
+// announces normally.
+input.addEventListener('input', forgetTheVerdict);
+
 file.addEventListener('change', () => {
   const chosen = file.files?.[0];
   if (chosen === undefined) {
     return;
   }
+
+  // Emptied now that the file has been taken. `change` fires when the control's value
+  // changes, and choosing the file already in it does not always change it — browsers
+  // differ, and she should not have to have the right one. Emptying makes the next
+  // identical choice a change everywhere; the `File` above is already in hand, so the
+  // read is unaffected.
+  file.value = '';
 
   chosen
     .text()
@@ -458,7 +611,11 @@ file.addEventListener('change', () => {
       convert();
     })
     .catch(() => {
-      announce((strings) => strings.fileFailed, 'error');
+      // A notice, not the field's description. The field is where the file's contents
+      // were going, which is the whole of its claim on the message — nothing here read
+      // the record, so nothing here may call it invalid or pull her into it. She may be
+      // holding a perfectly good game she pasted an hour ago.
+      announce('file', (strings) => strings.fileFailed, 'error');
     });
 });
 
@@ -467,17 +624,17 @@ copyButton.addEventListener('click', () => {
   if (text === '') {
     // The button stays focusable while there is nothing to copy, so say why
     // rather than doing nothing when it is pressed.
-    announce((strings) => strings.emptyResult, 'error', 'notice');
+    announce('result', (strings) => strings.emptyResult, 'error');
     return;
   }
 
   navigator.clipboard
     .writeText(text)
     .then(() => {
-      announce((strings) => strings.copied, 'info', 'notice');
+      announce('result', (strings) => strings.copied);
     })
     .catch(() => {
-      announce((strings) => strings.copyFailed, 'error', 'notice');
+      announce('result', (strings) => strings.copyFailed, 'error');
     });
 });
 
@@ -501,46 +658,57 @@ const shareCapabilities = (): ShareCapabilities => ({
   },
 });
 
-shareButton.addEventListener('click', () => {
-  shareThePage(shareCapabilities(), {
-    title: ui().title,
-    url: pageAddress(),
-  })
+/**
+ * One handler, bound to both controls, each answering in its own region.
+ *
+ * The region comes from the button that was pressed rather than from a fixed choice,
+ * which is the whole reason there are two of them: a confirmation drawn at the other
+ * end of the page is one a reader at high magnification never sees.
+ */
+const share = (notice: Region): void => {
+  shareThePage(shareCapabilities(), { title: ui().title, url: pageAddress() })
     .then((outcome) => {
+      if (outcome === 'busy') {
+        // A sheet is already open and unanswered, which is what the browser says when
+        // the other control is pressed while the first one's sheet stands. Saying
+        // anything would report an outcome that has not happened yet.
+        return;
+      }
+
       if (outcome === 'cancelled') {
         // She closed the sheet. Nothing happened, and saying so would report a
         // failure for a decision she made on purpose.
         return;
       }
 
-      // Marked as being about the page even though nothing in `render` consults
-      // `about` for a success today. The flag records what the message concerns, not
-      // what happens to be read from it: these two are about the address of the page,
-      // and leaving them claiming otherwise is how the next reader of `about` — or
-      // the next use of it — quietly mis-routes them.
       if (outcome === 'shared') {
-        announce((strings) => strings.shared, 'info', 'notice');
+        announce('page', (strings) => strings.shared, 'info', notice);
         return;
       }
 
       if (outcome === 'copied') {
-        announce((strings) => strings.addressCopied, 'info', 'notice');
+        announce('page', (strings) => strings.addressCopied, 'info', notice);
         return;
       }
 
-      // Drawn in the failure colour, but marked as being about the page: the game in
-      // the field is not what failed, so it is not marked invalid and does not take
-      // focus. The message names the browser's own share control, which is all the
-      // page has left to offer.
-      announce((strings) => strings.shareFailed, 'error', 'notice');
+      // Drawn in the failure colour, but said in a notice: the game in the field is not
+      // what failed, so it is not marked invalid and does not take focus. The message
+      // names the browser's own share control, which is all the page has left to offer.
+      announce('page', (strings) => strings.shareFailed, 'error', notice);
     })
     .catch(() => {
       // `shareThePage` is documented never to reject, and this is the backstop for
       // that promise being broken: silence is the one outcome a blind visitor cannot
       // detect, so something is always said.
-      announce((strings) => strings.shareFailed, 'error', 'notice');
+      announce('page', (strings) => strings.shareFailed, 'error', notice);
     });
-});
+};
+
+for (const [button, region] of shareNotices) {
+  button.addEventListener('click', () => {
+    share(region);
+  });
+}
 
 restoreLanguage();
 applyLanguage();

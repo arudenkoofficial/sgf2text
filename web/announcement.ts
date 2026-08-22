@@ -16,11 +16,47 @@ export type Tone = 'info' | 'error';
 /**
  * `field` is the region the game field names in `aria-describedby`, so it holds only
  * what the record in the field is about. `notice` is everything else the page has to
- * say — the result, the clipboard, the address of the page — and naming the region
- * rather than the subject is deliberate: at a call site, `'notice'` states where the
- * sentence will be read out, which is the fact that has consequences.
+ * say — the result, the clipboard, the address of the page.
  */
 export type Destination = 'field' | 'notice';
+
+/**
+ * What a message is about. The one fact a call site actually knows, and now the only
+ * one it states.
+ *
+ * Call sites used to name the destination instead, which was an improvement on naming
+ * it twice — a separate "is this about the record" flag could contradict the region it
+ * was passed with. But it left the subject unwritten anywhere, so the choice of region
+ * was a habit spread across ten call sites and no test could see it. Three messages
+ * shipped in the wrong one; none of the three failed a test.
+ *
+ * Named for the thing rather than the place, so the mapping below is a decision this
+ * file makes once and a test can read.
+ */
+export type Subject =
+  /** The game in the field: what it converted to, or why it would not. */
+  | 'record'
+  /** The converted text and the clipboard it is copied to. */
+  | 'result'
+  /** A file that was chosen — which is not the same as the record in the field. */
+  | 'file'
+  /** This page: its address, and handing it to somebody else. */
+  | 'page';
+
+/**
+ * The field's description is read out every time she reaches the field, so only a
+ * message about the record may live there. Everything else is an event: it happened
+ * once, it is said beside the control that caused it, and it is superseded rather than
+ * kept.
+ *
+ * `file` is the one that reads as a close call. A file that failed to load has a
+ * plausible claim on the field, since the field is where its contents were going and
+ * where she can paste them instead. It is still a notice: nothing examined the record,
+ * so marking it invalid — which is what the field's own region does with a failure —
+ * tells her the game she is holding is wrong on the evidence of a file.
+ */
+export const destinationFor = (subject: Subject): Destination =>
+  subject === 'record' ? 'field' : 'notice';
 
 export type Standing = {
   tone: Tone;
@@ -48,3 +84,44 @@ export const fieldInvalidity = ({ tone, where }: Standing): 'true' | 'false' | n
 
   return tone === 'error' ? 'true' : 'false';
 };
+
+/**
+ * Whether a standing message is still worth saying when the page restates it.
+ *
+ * The page restates the standing message when the language changes, so that a failure
+ * is never left sitting in a language she does not read. Restating a *confirmation*
+ * reports an event that is not happening, and the page did precisely that: copy the
+ * address, change the language, and it announced the copy again.
+ *
+ * The line is not tone alone. "Done, 2 moves" is a confirmation by tone, but the result
+ * it counts is on the page right now, so it describes the field's present state and has
+ * to be readable in the language just switched to. Everything the field says is its
+ * present state; an error anywhere is a condition still in force. Which leaves one
+ * combination out of four describing something finished.
+ *
+ * A cleared notice announces nothing — a polite region reports what appears in it, not
+ * what leaves — so dropping one is silent.
+ */
+export const survivesRestatement = ({ tone, where }: Standing): boolean =>
+  where === 'field' || tone === 'error';
+
+/**
+ * Which regions have to be emptied when a message is put in one of them.
+ *
+ * Two rules, and keeping them apart is the whole of this function. A notice is an
+ * event, so a newer one supersedes every older one: two confirmations standing side by
+ * side read as two things that just happened. The field's description is not an event
+ * but the condition of the field, so nothing empties it — it is replaced when there is
+ * something new to say about the record, and otherwise it stands.
+ *
+ * It used to be one rule, and the page shipped with the consequence: sharing wiped the
+ * sentence explaining why a record could not be parsed while leaving the field marked
+ * invalid, so a screen reader announced a problem it could not explain.
+ *
+ * Generic over the region so this stays free of the DOM: the shell passes its own
+ * objects, the tests pass plain ones.
+ */
+export const staleRegions = <T extends { kind: Destination }>(
+  regions: readonly T[],
+  speaking: T,
+): readonly T[] => regions.filter((region) => region !== speaking && region.kind === 'notice');

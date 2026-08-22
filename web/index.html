@@ -470,6 +470,48 @@
          The line of height is reserved here rather than on either paragraph, because
          the two never speak at once: one message at a time, in whichever of them it
          belongs to, and the page must not shift as it moves between them. */
+      /* The page's own controls, as opposed to the game's. They wrap as one block, so
+         a narrow screen breaks the masthead between the site's name and the controls
+         rather than between two controls that belong together. */
+      .page-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 0.5rem 1.5rem;
+      }
+
+      /* The button and the region that answers it, stacked: the answer belongs under
+         the thing that was pressed, at both ends of the page. */
+      .share {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.3rem;
+      }
+
+      /* The mark sits on the text's own line, so it rides the label's baseline rather
+         than the button's box — a glyph centred in the box drifts off the text as soon
+         as the label wraps to two lines. */
+      button .mark-share {
+        vertical-align: -0.15em;
+        margin-right: 0.45em;
+      }
+
+      /* Beside the buttons that produced them, like the form's own line, and reserving
+         one line so an answer appearing does not shift the page under a reader. */
+      .share p {
+        min-height: 1.6em;
+        margin: 0;
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 0.8rem;
+        color: var(--ink-soft);
+      }
+
+      .share p[data-tone='error'] {
+        color: var(--alert);
+        font-weight: 500;
+      }
+
       .announcements {
         min-height: 1.6em;
         font-family: 'JetBrains Mono', ui-monospace, monospace;
@@ -550,12 +592,71 @@
           No flags: a flag names a country, not a language, and an indicator that
           is purely visual tells the reader this page is for precisely nothing.
         -->
-        <div class="language">
-          <label for="lang" id="lang-label">Page language</label>
-          <select id="lang" name="lang">
-            <option value="en" lang="en">English</option>
-            <option value="ru" lang="ru">Русский</option>
-          </select>
+        <!--
+          The page's own controls, grouped so they wrap together rather than stranding
+          a button beside the site's name on a narrow screen.
+
+          Sharing lives here for the same reason the language control does: it acts on
+          the page, not on one conversion. It shipped in the form's action row, third
+          after Convert and Copy, and was missed on a first look at the live site —
+          which is what a control reads as when everything around it does something to
+          the game record.
+
+          The region for its outcome is its own sibling. One region cannot sit beside
+          two controls at opposite ends of a page, and a reader at high magnification
+          sees only the part of the page she is in.
+        -->
+        <div class="page-actions">
+          <div class="language">
+            <label for="lang" id="lang-label">Page language</label>
+            <select id="lang" name="lang">
+              <option value="en" lang="en">English</option>
+              <option value="ru" lang="ru">Русский</option>
+            </select>
+          </div>
+
+          <div class="share">
+            <button type="button" id="share-top" class="secondary">
+              <svg
+                class="mark-share"
+                viewBox="0 0 16 16"
+                width="16"
+                height="16"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <!--
+                  Drawn rather than borrowed. iOS draws sharing as a box with an arrow
+                  and Android as three joined dots, so a page that picks one is telling
+                  half its visitors about a control they do not have — the same reasoning
+                  that keeps flags off the language control. An arrow leaving an open
+                  tray says the thing goes elsewhere without naming whose menu it goes
+                  through.
+
+                  currentColor throughout, so it follows the label through both colour
+                  schemes and the hover state without a rule of its own.
+                -->
+                <path
+                  d="M8 10V2.6M5.2 5.1 8 2.1l2.8 3"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M3 8.6v4.8h10V8.6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <span class="label">Share the Page</span>
+            </button>
+            <p id="notice-top" role="status"></p>
+          </div>
         </div>
       </header>
 
@@ -604,17 +705,6 @@
               <button type="button" id="copy" class="secondary" aria-disabled="true">
                 Copy the Text
               </button>
-              <!--
-                No aria-disabled, unlike Copy: sharing the page never depends on a
-                conversion having happened, so there is no state in which this button
-                has nothing to do.
-
-                Named as a phrase rather than the bare verb the others use. A screen
-                reader reaches it out of any context that would say what is being
-                shared, and "Share" sitting beside a game record reads as an offer to
-                share the game — which is the one thing this button never does.
-              -->
-              <button type="button" id="share" class="secondary">Share the Page</button>
             </div>
 
             <!--
@@ -660,6 +750,48 @@
       </main>
 
       <footer>
+        <!--
+          The same control as the one in the masthead, with the same name, because it is
+          the same action: two names would tell a screen reader user the page offers two
+          things, and she would have to press one to find out that it does not.
+
+          It stands here so that a visitor who has read to the bottom does not have to
+          travel back up, and it stands immediately before the home screen instruction
+          because both are about taking this page with you — read one after the other,
+          they are one thought.
+        -->
+        <div class="share">
+          <button type="button" id="share-bottom" class="secondary">
+            <svg
+              class="mark-share"
+              viewBox="0 0 16 16"
+              width="16"
+              height="16"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path
+                d="M8 10V2.6M5.2 5.1 8 2.1l2.8 3"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M3 8.6v4.8h10V8.6"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span class="label">Share the Page</span>
+          </button>
+          <p id="notice-bottom" role="status"></p>
+        </div>
+
         <!--
           Collapsed, and native. A reader who listens to the page linearly pays for
           every permanent paragraph on every visit, and this text is needed once — so
