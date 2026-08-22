@@ -241,13 +241,21 @@ English would pass even if the source it names were never read at all.
 ### Requirement: Copying the result
 
 The page SHALL let the visitor copy the converted text and SHALL confirm that the
-copy happened.
+copy happened. Every copy SHALL be confirmed, including one that repeats the copy
+before it: the confirmation belongs to the action, not to the sentence.
 
 #### Scenario: Copy confirmed
 
 - **WHEN** the visitor activates the copy control
 - **THEN** the plain text of the result is placed on the clipboard, with line breaks
   preserved, and the live region announces that it was copied
+
+#### Scenario: Copying twice is confirmed twice
+
+- **WHEN** the visitor activates the copy control a second time without converting
+  anything in between
+- **THEN** the text is placed on the clipboard again and the live region announces it
+  again, because a confirmation she does not hear is a copy she cannot know happened
 
 ### Requirement: Conversion stays in the browser
 
@@ -564,13 +572,20 @@ and a cookie that was never there.
 
 ### Requirement: Sharing the page
 
-The page SHALL offer a control that hands the page's own address to the operating
-system's share sheet, and SHALL pass the address in the language currently being
-read, so that the recipient opens the version the sender was looking at.
+The page SHALL offer, in the masthead and again in the footer, a control that hands
+the page's own address to the operating system's share sheet, and SHALL pass the
+address in the language currently being read, so that the recipient opens the version
+the sender was looking at.
+
+Both controls SHALL carry the same accessible name, because they perform the same
+action and two names would promise a difference that does not exist. Neither SHALL be
+placed among the controls that convert a game: the page's own actions belong with the
+page's own actions, which is where the language control and the home screen
+instruction already are.
 
 Where the browser offers no share sheet, the control SHALL copy the address to the
 clipboard instead. It SHALL announce which of the two happened, in a polite live
-region beside the controls that produced it, and SHALL NOT move focus: sharing
+region beside the control that was pressed, and SHALL NOT move focus: sharing
 succeeded, and there is nothing for the visitor to act on.
 
 The control exists because handing this tool to the next blind player is something
@@ -578,12 +593,29 @@ the players do for each other, and a browser's own share control has to be hunte
 for. A named button in the page is reachable by the same means as everything else
 here.
 
+A share the browser refuses because one is already outstanding SHALL NOT be announced
+as a failure and SHALL NOT fall through to the clipboard: the outcome she is waiting
+for has not happened, and overwriting what she was holding is a loss she did not ask
+for. Whether a share is outstanding SHALL be answered by the browser rather than
+remembered by the page, and no share SHALL leave either control unable to try again.
+
+The page's own memory of an open sheet agrees with the browser's answer for as long as
+outcomes arrive. Where they part is where it matters: a share whose outcome never
+arrives leaves that memory shut for the rest of the visit, and both controls then
+answer every press with nothing at all. Silence is the one outcome a blind visitor
+cannot detect — a control that has gone permanently mute is indistinguishable, to her,
+from one she failed to activate.
+
+Each control MAY carry a mark beside its name. Such a mark SHALL be hidden from
+assistive technology and SHALL NOT be the only thing naming the control, since a
+glyph names nothing to a visitor who cannot see it.
+
 Only the page's address is transmitted. The game in the input is not part of what is
 shared, under any branch of this requirement.
 
 #### Scenario: Shared through the system sheet
 
-- **WHEN** a visitor activates the share control in a browser that offers a share
+- **WHEN** a visitor activates either share control in a browser that offers a share
   sheet
 - **THEN** the sheet opens carrying the page's address and a title naming the page,
   both in the language being read, and the live region says the page was offered for
@@ -598,7 +630,7 @@ shared, under any branch of this requirement.
 
 #### Scenario: No share sheet in this browser
 
-- **WHEN** a visitor activates the control in a browser without the share sheet
+- **WHEN** a visitor activates either control in a browser without the share sheet
 - **THEN** the address is copied to the clipboard and the live region says it was
   copied, rather than the control doing nothing or reporting a browser limitation
   the visitor cannot act on
@@ -621,6 +653,34 @@ shared, under any branch of this requirement.
 - **WHEN** a visitor shares the page with a game record in the input
 - **THEN** what leaves the browser is the page's address and nothing else, because
   the record is unpublished work and the page's promise about it holds here too
+
+#### Scenario: The outcome is announced where the visitor is
+
+- **WHEN** a visitor activates the share control in the footer
+- **THEN** the outcome is announced in the region belonging to that control, not in
+  one at the other end of the page, because a reader at high magnification sees only
+  the part of the page she is in
+
+#### Scenario: Sharing is not offered among the conversion controls
+
+- **WHEN** a visitor reaches the buttons that convert and copy a game
+- **THEN** sharing the page is not one of them, so nothing there suggests that the
+  game is what would be shared
+
+#### Scenario: A second press while the sheet still stands
+
+- **WHEN** a visitor opens the share sheet from one control and activates the other
+  control while that sheet is still open
+- **THEN** nothing is announced and the clipboard is left untouched, because the share
+  she started may still succeed and reporting an outcome now would report one that has
+  not happened
+
+#### Scenario: A share whose outcome never arrives
+
+- **WHEN** a share is started and the browser never reports how it ended
+- **THEN** a later press still reaches the browser and is answered on its own merits,
+  rather than both controls going permanently silent on the strength of the page's own
+  record of a sheet it can no longer see
 
 ### Requirement: The page can be kept as an icon
 
@@ -747,8 +807,15 @@ VoiceOver will call it when she reaches it.
 
 A message the page announces SHALL be associated with the game field only when the
 field is what the message is about. A message about anything else — the result, the
-clipboard, the address of the page — SHALL NOT become the field's description, SHALL
-NOT mark the field invalid, and SHALL NOT move focus into it.
+clipboard, a file that could not be read, the address of the page — SHALL NOT become
+the field's description, SHALL NOT mark the field invalid, and SHALL NOT move focus
+into it.
+
+What each message is about SHALL be stated where the message is announced, and the
+region SHALL be derived from it rather than chosen alongside it. Choosing the region by
+hand at each call site leaves the subject written down nowhere, so the choice is a
+habit rather than a decision and no test can read it — which is how three messages came
+to be announced about the wrong thing, none of them failing a test.
 
 The field's description is read out every time she reaches the field. A message left
 there outlives the moment it was about, so "the address of this page has been copied"
@@ -756,9 +823,24 @@ becomes part of how the page introduces her own game record, minutes after the
 copying. Marking the field invalid is worse than untidy: it tells her the record she
 is holding is wrong, on the evidence of something that never examined it.
 
-Both messages SHALL sit beside the controls that produced them, as the requirement
-about a message staying with its field already asks: what changes here is which
-message the field claims as its own description, not where either one is drawn.
+A file that could not be read is the closest of these calls, since the field is where
+the file's contents were going and where she can paste them instead. It is still not
+about the field: the record already sitting there may be a perfectly good game, and
+nothing about a failed file read examined it.
+
+Every message SHALL sit beside the control that produced it, as the requirement about
+a message staying with its field already asks. Where a page offers the same action in
+more than one place, each place SHALL have its own region, since one fixed region
+cannot be beside two controls at opposite ends of a page.
+
+At most one such message SHALL be readable at a time: putting a message in one region
+SHALL clear whatever another region was holding, so a sentence that has stopped being
+true is not left behind for a visitor reading the page in order.
+
+The field's own description is not one of these messages and SHALL NOT be cleared by
+them. It states the condition of the field, so it SHALL stand until that condition
+changes — otherwise a field marked invalid is left without the sentence saying why,
+and a screen reader announces a problem it cannot explain.
 
 #### Scenario: A share failure does not accuse the record
 
@@ -774,12 +856,35 @@ message the field claims as its own description, not where either one is drawn.
   invalid or move her into the field: what is missing is a conversion, not a
   correction
 
+#### Scenario: A file that could not be read is not a bad record
+
+- **WHEN** a chosen file cannot be read while a game record the visitor pasted earlier
+  is still in the field
+- **THEN** the page says the file could not be read, and does not mark that record
+  invalid or move her into the field, because nothing about the file examined the
+  record
+
 #### Scenario: The field's description holds only its own messages
 
 - **WHEN** the address of the page has been copied and the visitor later reaches the
   game field
 - **THEN** what is read out with the field is the field's own label and description,
   and not the message about the address
+
+#### Scenario: One message at a time, wherever it is
+
+- **WHEN** a visitor shares from the masthead and then shares from the footer
+- **THEN** the second outcome is announced beside the footer control and the first is
+  no longer anywhere on the page, rather than both standing as if both had just
+  happened
+
+#### Scenario: A mark of invalidity keeps its explanation
+
+- **WHEN** a record that failed to parse is in the field, and the visitor then shares
+  the page and later returns to the field
+- **THEN** the field is still marked invalid and still describes what was wrong with
+  the record, because sharing the page never examined the record and so cannot be the
+  reason its explanation disappears
 
 ### Requirement: Every asset the document names is published
 
@@ -822,4 +927,85 @@ would report both as nobody's business and let them ship as a 404.
   in the served document
 - **THEN** it is still required to be published, because the visitor who switches
   language is exactly the visitor it exists for
+
+### Requirement: Every action is answered, including a repeat
+
+Every activation of a control SHALL be answered, and an activation that produces the
+same outcome as the one before it SHALL be answered again rather than skipped because
+the page has already said that sentence once. Choosing the same file twice SHALL
+likewise be two answered actions.
+
+A polite live region reports what appears in it. A sentence rewritten identically is
+still an appearance and SHALL be written; a sentence left in place is not, and reads as
+a control that did nothing.
+
+She presses a second time precisely because she is unsure the first press registered.
+Silence is the one outcome she cannot investigate: she cannot glance at the clipboard, or
+see the button flash, or check whether anything moved. A control that answers once and
+then ignores her is indistinguishable, from where she is, from a control that is broken.
+
+Silence remains correct where there is genuinely no outcome yet — a dismissed share
+sheet, a share the browser refuses because one is already open. What this requirement
+forbids is silence standing in for an outcome that has happened.
+
+#### Scenario: The same answer, twice
+
+- **WHEN** the visitor activates the copy control twice with nothing converted
+- **THEN** the page says there is nothing to copy on both presses, rather than
+  answering the first and ignoring the second because the sentence has not changed
+
+#### Scenario: A second copy is confirmed too
+
+- **WHEN** the visitor copies the result and then copies it again
+- **THEN** both copies are confirmed, because the second one happened just as much as
+  the first
+
+#### Scenario: The same file, chosen again
+
+- **WHEN** the visitor chooses a file, and later chooses that same file again
+- **THEN** it is read again and the outcome announced again, rather than the second
+  choice reaching nothing because the control still holds the first
+
+### Requirement: A message does not outlive what it describes
+
+A message SHALL stand only while what it describes still holds. A message about a
+completed action SHALL NOT be announced a second time by anything other than that action
+happening again; a message about the record in the field SHALL be cleared, along with any
+mark of invalidity, when that record is replaced.
+
+This is the third of the three questions a message has to answer, beside what it is
+about and where it is said: for how long is it true. Getting it wrong produces the
+page's most misleading behaviour, because a sentence that was accurate when written is
+read out as though it were accurate now.
+
+A failure is different from a confirmation here. A failure describes a condition that is
+still in force — the record is still broken, and she is still owed the reason in a
+language she reads — so restating it in the new language is restating something true. A
+confirmation describes an event that finished; repeating it reports an event that is not
+happening.
+
+#### Scenario: Changing the language does not repeat a finished action
+
+- **WHEN** the visitor copies the page's address and then changes the language
+- **THEN** the confirmation is not announced again in the new language, because nothing
+  was copied by changing the language
+
+#### Scenario: Changing the language restates a standing failure
+
+- **WHEN** a record has failed to convert and the visitor then changes the language
+- **THEN** the reason is stated again in the new language, because the record is still
+  broken and the explanation is what she has to act on
+
+#### Scenario: A replaced record loses the verdict on the old one
+
+- **WHEN** a record has failed to convert and the visitor then edits or replaces it in
+  the field
+- **THEN** the field stops being marked invalid and stops describing the old failure,
+  rather than telling a screen reader that a record the page has never examined is wrong
+
+#### Scenario: The verdict returns with the next conversion
+
+- **WHEN** the visitor replaces a failed record with another one and converts it
+- **THEN** the page states the outcome of that conversion, so clearing the old verdict
+  leaves the field described by its own present state rather than by nothing at all
 
