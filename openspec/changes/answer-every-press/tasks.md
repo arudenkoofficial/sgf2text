@@ -49,4 +49,18 @@ has no verdict on the new record, and `'false'` is a verdict.
 
 - [x] 5.1 Run the whole suite, both type checks and both builds.
 - [x] 5.2 Confirm nothing visible moved: the markup tests pass untouched, and no string was added.
-- [ ] 5.3 Verify with a screen reader that a repeated press is spoken a second time — the one thing here that a mutation count cannot prove, and the one that decides whether the clear-then-rewrite fallback is needed.
+- [ ] 5.3 Open, and archived open: verify with a screen reader that a repeated press is spoken a second time.
+
+  Neither the author nor a browser can answer this. It needs VoiceOver on a real
+  iPhone, which means it can only come from the player this page is for, in use —
+  and asking her to be the test rig for it is not a thing to arrange lightly.
+
+  Archiving it open is safe because the change cannot regress anything here. The
+  region used to be left untouched on a repeat, so nothing was spoken; it is now
+  rewritten, so the DOM reports the change. If VoiceOver collapses identical
+  consecutive announcements anyway, the outcome is what it already was, not worse.
+
+  If it turns out silent, the fix is known and does not need rediscovering: clear
+  the region and write the sentence back on the following frame, and reopen this as
+  its own change. Worth doing only on evidence — it is uglier code, and buying it
+  in advance would be paying for a defect nobody has seen.

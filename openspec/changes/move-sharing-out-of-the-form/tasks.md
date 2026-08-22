@@ -67,4 +67,16 @@ because a *file* could not be read.
 - [x] 7.2 Measure the new control's contrast in both colour schemes — text 4.5:1, border 3:1 against the page and against its own fill — rather than judging it by eye.
 - [x] 7.3 Confirm the page still asks nothing of a third party: the mark is inline, so no file was added to the deploy.
 - [x] 7.4 Look at the rendered page in both schemes and at a narrow width, and confirm the masthead wraps rather than crushing the site's name.
-- [ ] 7.5 Verify with a screen reader that the two controls read as the same action in two places, that an outcome is announced beside the control that was pressed, and that a standing message about the record survives a share.
+- [ ] 7.5 Open, and archived open: verify with a screen reader that the two controls read as the same action in two places, that an outcome is announced beside the control that was pressed, and that a standing message about the record survives a share.
+
+  The third of these is verified in a browser already — a failed conversion followed
+  by two shares left the field still marked invalid and still holding its
+  explanation. What needs a screen reader is the first two, and specifically whether
+  two controls sharing one name read as a duplicate when she sweeps the page's
+  controls, or whether the banner and footer landmarks tell them apart as intended.
+
+  That is a judgement about how it sounds, not a fact about the DOM, so it can only
+  come from someone using it with VoiceOver on an iPhone. Archived open rather than
+  held: the controls work, are reachable, and are named; what is unverified is
+  whether the naming choice was the right one, and reopening that is a change of
+  wording, not a defect to fix.
