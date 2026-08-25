@@ -4,6 +4,12 @@ export type SgfErrorCode =
   | 'not-sgf'
   | 'rectangular-board'
   | 'unreadable-size'
+  /**
+   * A square board the notation cannot name. Distinct from `unreadable-size`,
+   * which is a size that could not be read at all: this one was read perfectly
+   * well and is simply larger than the column letters go.
+   */
+  | 'unsupported-size'
   | 'unreadable-move'
   | 'unknown-locale';
 

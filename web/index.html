@@ -11,10 +11,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>sgf2text — a Go game as readable text</title>
+    <title>sgf2text — Go games and problems as readable text</title>
     <meta
       name="description"
-      content="Converts an SGF Go game record into plain text a screen reader can speak, with the coordinates of every move and the stones it captures."
+      content="Converts SGF Go files — game records and problems alike — into plain text a screen reader can speak, with the coordinates of every move and the stones it captures."
     />
     <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#101215" media="(prefers-color-scheme: dark)" />
@@ -63,10 +63,10 @@
     -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="sgf2text" />
-    <meta property="og:title" content="sgf2text — a Go game as readable text" />
+    <meta property="og:title" content="sgf2text — Go games and problems as readable text" />
     <meta
       property="og:description"
-      content="Converts an SGF Go game record into plain text a screen reader can speak, with the coordinates of every move and the stones it captures."
+      content="Converts SGF Go files — game records and problems alike — into plain text a screen reader can speak, with the coordinates of every move and the stones it captures."
     />
     <meta property="og:locale" content="en_US" />
     <meta property="og:url" content="https://sgf.rudenko.live/?lang=en" />
@@ -661,10 +661,10 @@
       </header>
 
       <div class="intro">
-        <p class="subtitle" id="subtitle">A game record, written out as text</p>
+        <p class="subtitle" id="subtitle">Game records and problems, written out as text</p>
         <p class="tagline" id="tagline">
-          Turns an SGF Go game record into text a screen reader can read out: move by move,
-          with coordinates and captured stones.
+          Turns an SGF Go file — a game record or a problem — into text a screen reader can
+          read out: move by move, with coordinates and captured stones.
         </p>
       </div>
 
@@ -683,7 +683,7 @@
 
           <form id="form" novalidate>
             <div class="field">
-              <label for="sgf" id="sgf-label">Paste an SGF game record</label>
+              <label for="sgf" id="sgf-label">Paste an SGF game record or problem</label>
               <textarea
                 id="sgf"
                 name="sgf"
@@ -743,7 +743,7 @@
               tabindex="0"
               aria-labelledby="result-heading"
               translate="no"
-              data-placeholder="The game record will appear here."
+              data-placeholder="The converted text will appear here."
             ></pre>
           </div>
         </section>
@@ -816,7 +816,7 @@
           </p>
         </details>
         <p id="privacy">
-          The game is converted in your browser and is never sent anywhere.
+          The file is converted in your browser and is never sent anywhere.
         </p>
         <p id="credits">
           The idea and the shape of the output come from

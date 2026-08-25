@@ -20,7 +20,20 @@ export type SetupStone = {
 export type GameEvent =
   | { kind: 'move'; n: number; color: Color; at: Vertex; captures: Vertex[] }
   | { kind: 'pass'; n: number; color: Color }
-  | { kind: 'setup'; stones: SetupStone[] };
+  /**
+   * The board edited rather than played on: stones appearing, and stones taken
+   * off by `AE`.
+   *
+   * `cleared` carries colours, which the file does not: `AE` names a point and
+   * says only that it should end up empty. What was standing there is known only
+   * after the rules have been applied, so it is filled in by `replay` — the same
+   * division as a move's captures, which SGF does not record either.
+   *
+   * Only points that actually held a stone appear. `AE` on an empty point is a
+   * statement about a board that already agrees with it, and announcing it would
+   * send a reader hunting for a stone she does not have.
+   */
+  | { kind: 'setup'; stones: SetupStone[]; cleared: SetupStone[] };
 
 /** How a game ended, parsed out of the SGF `RE` property. */
 export type GameResult =
@@ -49,6 +62,59 @@ export type GameRecord = {
   size: number;
   meta: GameMeta;
   events: GameEvent[];
+};
+
+/**
+ * Something that was played rather than placed. A problem's setup is stated once
+ * in the problem itself, so no line of its answer can hold one — a fact the type
+ * carries rather than a comment promising it.
+ */
+export type PlayedEvent = Exclude<GameEvent, { kind: 'setup' }>;
+
+/**
+ * One line of a problem's answer, replayed under the rules from the setup
+ * position. Complete in itself: it holds every move from the first, not only
+ * the part where it diverges from its neighbour, because it is read aloud and a
+ * listener has no way to hold a position in a tree while moving stones by hand.
+ */
+export type ProblemLine = {
+  /** Its ordinal in the file's own order, counted from one. */
+  n: number;
+  /**
+   * Whether the file marks this line as solving the problem. Never inverted:
+   * SGF has no way of saying that a branch fails, so an unmarked line means the
+   * file said nothing, not that the line is wrong.
+   */
+  correct: boolean;
+  /**
+   * Everything the line does, in order: its moves, and any stones it places as it
+   * goes. The problem's own setup is not among them — that is stated once in the
+   * statement rather than repeated at the head of every line.
+   */
+  events: GameEvent[];
+};
+
+/**
+ * A problem: a position that was constructed rather than played, and the tree of
+ * answers to it flattened into lines.
+ *
+ * Separate from `GameRecord` rather than folded into it. A game's own record has
+ * been checked against real files by a blind player, and nothing here may reach
+ * it.
+ */
+export type ProblemRecord = {
+  size: number;
+  setup: SetupStone[];
+  toPlay: Color;
+  /** The problem's statement, as the file writes it. Absent when it has none. */
+  note?: string;
+  lines: ProblemLine[];
+  /**
+   * Lines the file records but that could not be read. Said out loud rather than
+   * passed over: a solution that is quietly one line short is a solution a reader
+   * has no way to know she is missing.
+   */
+  unreadable: number;
 };
 
 /** Turns a vertex into the notation a locale's readers expect. */

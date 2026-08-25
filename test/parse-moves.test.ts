@@ -72,6 +72,8 @@ test('reads handicap stones as a setup with coordinates', () => {
       { color: 'B', at: { x: 3, y: 15 } },
       { color: 'B', at: { x: 15, y: 15 } },
     ],
+    // A handicap places stones and empties nothing, so `AE` has nothing to say.
+    cleared: [],
   });
   assert.deepEqual(game.moves[1], { kind: 'move', color: 'W', at: { x: 5, y: 16 } });
 });

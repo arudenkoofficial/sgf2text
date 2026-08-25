@@ -14,6 +14,9 @@ const stones = (count: number): string =>
 const points = (count: number): string =>
   `${formatNumber.format(count)} ${count === 1 ? 'point' : 'points'}`;
 
+const variations = (count: number): string =>
+  `${formatNumber.format(count)} ${count === 1 ? 'variation' : 'variations'}`;
+
 export const en: Locale = {
   id: 'en',
   coordinates: western,
@@ -26,6 +29,7 @@ export const en: Locale = {
     komi: 'Komi',
     handicap: 'Handicap',
     result: 'Result',
+    note: 'Note',
   },
 
   boardSize: (size) => `${size}×${size}`,
@@ -94,4 +98,28 @@ export const en: Locale = {
   },
 
   pass: (n, color) => `${n}. ${SIDE[color]} passes`,
+
+  problem: (toPlay) => `Problem. ${SIDE[toPlay]} to play.`,
+
+  setup: (color, placements) => `${SIDE[color]}: ${stones(placements.length)} — ${placements.join(', ')}`,
+
+  // Shaped like the capture clause in `move`, so the two events that happen to
+  // stones without a move being played are heard as a matching pair.
+  placed: (color, placements) =>
+    `${stones(placements.length)} of ${SIDE[color].toLowerCase()} placed: ${placements.join(', ')}`,
+
+  // "Taken off the board", never "captured": `move` says captured, and the two
+  // must not be confusable when heard a sentence apart.
+  removed: (color, placements) =>
+    `${stones(placements.length)} of ${SIDE[color].toLowerCase()} taken off the board: ${placements.join(', ')}`,
+
+  solution: (count) =>
+    count === 0 ? 'The file records no solution.' : `Solution: ${variations(count)}.`,
+
+  unreadableLines: (count) =>
+    count === 1
+      ? 'One more variation could not be read: it holds a move that would not parse.'
+      : `${formatNumber.format(count)} more variations could not be read: they hold a move that would not parse.`,
+
+  line: (n, correct) => (correct ? `Variation ${n} — correct:` : `Variation ${n}:`),
 };

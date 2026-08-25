@@ -1,8 +1,10 @@
-import { isSgfError, sgfToText } from '../src/index.ts';
+import { documentToText, isSgfError, sgfToDocument } from '../src/index.ts';
 import {
+  conversionMessage,
   destinationFor,
   fieldInvalidity,
   staleRegions,
+  summarise,
   survivesRestatement,
 } from './announcement.ts';
 import type { Destination, Standing, Subject, Tone } from './announcement.ts';
@@ -262,9 +264,6 @@ const showResult = (text: string): void => {
   copyButton.setAttribute('aria-disabled', text === '' ? 'true' : 'false');
 };
 
-const countMoves = (text: string): number =>
-  text.split('\n').filter((line) => /^\d+\./.test(line)).length;
-
 const convert = (): void => {
   const sgf = input.value.trim();
 
@@ -275,10 +274,14 @@ const convert = (): void => {
   }
 
   try {
-    const text = sgfToText(input.value, { locale: language.value });
-    const moves = countMoves(text);
-    showResult(text);
-    announce('record', (strings) => strings.done(moves));
+    // Read once, then summarised: what the file turned out to be decides what is
+    // announced, and the announcement is restated whenever the language changes.
+    // Only the summary is captured, so the record itself is free once the text is
+    // on the page rather than held for as long as the message stands.
+    const file = sgfToDocument(input.value);
+    const converted = summarise(file);
+    showResult(documentToText(file, { locale: language.value }));
+    announce('record', (strings) => conversionMessage(converted, strings));
   } catch (error) {
     // The input is left exactly as the visitor typed it, so it can be corrected.
     // Only translated wording is announced: the library's own messages are

@@ -2,7 +2,7 @@
   "name": "SGF to text",
   "short_name": "SGF to text",
   "lang": "en",
-  "description": "Converts an SGF Go game record into plain text a screen reader can speak, with the coordinates of every move and the stones it captures.",
+  "description": "Converts SGF Go files — game records and problems alike — into plain text a screen reader can speak, with the coordinates of every move and the stones it captures.",
   "start_url": ".",
   "scope": ".",
   "display": "browser",

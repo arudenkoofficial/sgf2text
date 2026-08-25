@@ -97,3 +97,44 @@ test('carries the metadata and size through unchanged', () => {
   assert.equal(game.size, 19);
   assert.equal(game.meta.blackPlayer, 'Alice');
 });
+
+/**
+ * `AE` empties a point. SGF says only which point, never what was standing on
+ * it, so the colour is filled in here for the same reason a move's captures are:
+ * this is the only layer holding a board to ask.
+ */
+const setups = (events: GameEvent[]) => events.filter((event) => event.kind === 'setup');
+
+const replaySgf = (sgf: string) => replay(parseGame(sgf));
+
+test('names the colour of a stone that AE takes off', () => {
+  const events = replaySgf('(;GM[1]SZ[9]AB[cc]AW[dd];B[ba];AE[cc];W[bb])').events;
+  const cleared = setups(events).flatMap((event) => event.cleared);
+
+  assert.deepEqual(cleared, [{ color: 'B', at: { x: 2, y: 2 } }]);
+});
+
+test('AE takes off a stone that was played, not only one that was placed', () => {
+  const events = replaySgf('(;GM[1]SZ[9];B[cc];W[dd];AE[cc];W[bb])').events;
+
+  assert.deepEqual(
+    setups(events).flatMap((event) => event.cleared),
+    [{ color: 'B', at: { x: 2, y: 2 } }],
+  );
+});
+
+test('AE on an empty point reports nothing, because nothing happened', () => {
+  // Saying it would send a reader hunting the board for a stone she never had.
+  const events = replaySgf('(;GM[1]SZ[9]AB[cc];B[ba];AE[ii];W[bb])').events;
+
+  assert.deepEqual(setups(events).flatMap((event) => event.cleared), []);
+});
+
+test('the board goes on without the stone AE removed', () => {
+  // A9 would be captured by B A8 with the white stone there. Once AE has taken it
+  // off, the same move captures nothing — so the removal reached the rules and not
+  // only the text.
+  const events = replaySgf('(;GM[1]SZ[9];B[ba];AW[aa];AE[aa];B[ab])').events;
+
+  assert.deepEqual(capturesOf(events, 2), []);
+});

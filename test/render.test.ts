@@ -128,6 +128,79 @@ test('lists handicap stones by coordinate, not only by count', () => {
   }
 });
 
+/**
+ * What the handicap label may and may not be put on. It used to be put on the
+ * first setup event anywhere in the file, whatever colour the stones were and
+ * wherever they sat, which is the same mistake `read-sgf-problems` removed from
+ * the problem side and left standing here.
+ */
+const renderSgf = (sgf: string, locale = 'ru') =>
+  render(replay(parseGame(sgf)), getLocale(locale));
+
+test('a position of both colours is stated, not called a handicap', () => {
+  // A game resumed from a diagram. White stones on the board before move 1 rule
+  // out a handicap, whatever else the file says.
+  const text = renderSgf('(;GM[1]FF[4]SZ[19]PB[Bob]PW[Alice]RE[B+R]AW[dd]AB[pp];B[qq];W[cc])');
+
+  assert.doesNotMatch(text, /Фора/);
+  assert.match(text, /^Чёрные: 1 камень — Q4$/m);
+  assert.match(text, /^Белые: 1 камень — D16$/m);
+});
+
+test('a stone placed after play has begun is said where it happens', () => {
+  // Dropping it would be worse than mislabelling it: the rules are applied to
+  // that stone either way — the capture below depends on it — so a reader who is
+  // never told it appeared ends up with a board the text no longer describes.
+  const all = lines(renderSgf('(;GM[1]SZ[9];B[ba];AW[aa];B[ab])'));
+
+  assert.doesNotMatch(all.join('\n'), /Фора/);
+
+  const placed = all.findIndex((line) => line.startsWith('Поставлено'));
+  assert.ok(placed > 0, 'the stone that appears is announced');
+  assert.equal(all[placed], 'Поставлено 1 камень белых: A9');
+  assert.match(all[placed - 1] ?? '', /^1\. /, 'after the move it follows in the file');
+  assert.match(all[placed + 1] ?? '', /^2\. Чёрные A8 — снято 1 камень белых: A9$/);
+});
+
+test('a real handicap is still a handicap', () => {
+  const text = renderSgf(
+    '(;GM[1]FF[4]SZ[19]HA[4]KM[0.5]PB[Bob]PW[Alice]RE[W+3.5]AB[dd][pd][dp][pp]PL[W];W[qf])',
+  );
+
+  assert.match(text, /^Фора: 4 камня — D16, Q16, D4, Q4$/m);
+  assert.doesNotMatch(text, /^Чёрные: 4 камня/m, 'a handicap is not restated as a position');
+});
+
+/**
+ * The distinction the whole of `AE` support rests on. A capture means somebody's
+ * move worked; a removal means the author edited the position. Both take a stone
+ * off her board, and her board cannot tell her which happened — only the sentence
+ * can, so the two must not share a verb.
+ */
+test('a stone taken off by AE is not worded as a capture', () => {
+  const removal = renderSgf('(;GM[1]SZ[9];B[ba];AW[aa];AE[aa];B[ab])');
+  const capture = renderSgf('(;GM[1]SZ[9];B[ba];AW[aa];B[ab])');
+
+  assert.match(removal, /^Убрано с доски 1 камень белых: A9$/m);
+  assert.doesNotMatch(removal, /снято/, 'nothing was captured, and nothing says so');
+  assert.match(capture, /снято 1 камень белых: A9/);
+  assert.doesNotMatch(capture, /Убрано/);
+});
+
+test('a point emptied before the first move is silently absent', () => {
+  // The reader starts from an empty board: there is no stone at C7 to take off.
+  const text = renderSgf('(;GM[1]SZ[9]AB[cc][dd]AE[cc]PB[a]PW[b];W[ce])');
+
+  assert.doesNotMatch(text, /Убрано/);
+  assert.match(text, /^Фора: 1 камень — D6$/m);
+});
+
+test('names the placed stones in English too', () => {
+  const text = renderSgf('(;GM[1]SZ[9];B[ba];AW[aa];B[ab])', 'en');
+
+  assert.match(text, /^1 stone of white placed: A9$/m);
+});
+
 test('spells out every kind of result', () => {
   const resultLine = (re: string, locale = 'ru') => {
     const record = replay(parseGame(`(;GM[1]SZ[19]RE[${re}];B[pd])`));

@@ -35,6 +35,9 @@ const stones = (count: number): string =>
 const points = (count: number): string =>
   `${formatNumber.format(count)} ${inflect(count, { one: 'очко', few: 'очка', many: 'очков' })}`;
 
+const variations = (count: number): string =>
+  `${formatNumber.format(count)} ${inflect(count, { one: 'вариант', few: 'варианта', many: 'вариантов' })}`;
+
 export const ru: Locale = {
   id: 'ru',
   coordinates: western,
@@ -47,6 +50,7 @@ export const ru: Locale = {
     komi: 'Коми',
     handicap: 'Фора',
     result: 'Результат',
+    note: 'Примечание',
   },
 
   boardSize: (size) => `${size}×${size}`,
@@ -114,4 +118,29 @@ export const ru: Locale = {
   },
 
   pass: (n, color) => `${n}. ${SIDE[color]} пас`,
+
+  problem: (toPlay) => `Задача. Ход ${SIDE_GENITIVE[toPlay]}.`,
+
+  setup: (color, placements) => `${SIDE[color]}: ${stones(placements.length)} — ${placements.join(', ')}`,
+
+  // «Поставлено» — как «снято» в записи хода: безличная форма согласуется с любым
+  // числом, и слушателю не приходится учить вторую конструкцию.
+  placed: (color, placements) =>
+    `Поставлено ${stones(placements.length)} ${SIDE_GENITIVE[color]}: ${placements.join(', ')}`,
+
+  // «Убрано», а не «снято»: «снято» занято взятием в записи хода, и спутать их
+  // нельзя. Корни разные на слух — у-бра-но и сня-то — при том же безличном
+  // обороте, что у «поставлено».
+  removed: (color, placements) =>
+    `Убрано с доски ${stones(placements.length)} ${SIDE_GENITIVE[color]}: ${placements.join(', ')}`,
+
+  solution: (count) =>
+    count === 0 ? 'Решения в файле нет.' : `Решение: ${variations(count)}.`,
+
+  // «Там» уходит от согласования с числом: и «ещё 1 вариант», и «ещё 2 варианта»
+  // продолжаются одним и тем же оборотом.
+  unreadableLines: (count) =>
+    `Ещё ${variations(count)} прочитать не удалось: там есть ход, который не получилось разобрать.`,
+
+  line: (n, correct) => (correct ? `Вариант ${n} — правильный:` : `Вариант ${n}:`),
 };
