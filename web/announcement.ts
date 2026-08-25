@@ -130,18 +130,42 @@ export const staleRegions = <T extends { kind: Destination }>(
 ): readonly T[] => regions.filter((region) => region !== speaking && region.kind === 'notice');
 
 /**
- * What the page says about a file it has just converted.
+ * Everything an announcement needs to know about a file that has just been
+ * converted, and nothing else.
  *
+ * Two scalars rather than the record itself, because the announcement outlives
+ * the conversion: it is restated whenever the language changes, so whatever it
+ * captures is held until the next message replaces it. Capturing the document
+ * kept every event of a four-hundred-move game alive to recover a genre and a
+ * count, and recomputed the count on each restatement.
+ */
+export type Conversion = { kind: 'game'; moves: number } | { kind: 'problem'; lines: number };
+
+/**
  * The count depends on what the file is. A game has moves; a problem has lines
  * of an answer, and adding up the moves of all of them produces a number that
  * describes nothing — which is what the page did, because it counted the lines
  * of the finished text that begin with a numeral rather than asking the record.
  *
+ * Setup stones are not moves, whether they open the game or appear part-way
+ * through it. They are placed, not played, and were never part of the count.
+ */
+export const summarise = (file: SgfDocument): Conversion =>
+  file.kind === 'problem'
+    ? { kind: 'problem', lines: file.problem.lines.length }
+    : {
+        kind: 'game',
+        moves: file.record.events.filter((event) => event.kind !== 'setup').length,
+      };
+
+/**
+ * What the page says about a file it has just converted.
+ *
  * Here rather than in `main.ts`, for the reason everything else in this file is:
  * the DOM shell is the one module a `node --test` run cannot import, so a choice
  * left there is a choice no test can see.
  */
-export const conversionMessage = (file: SgfDocument, strings: UiStrings): string =>
-  file.kind === 'problem'
-    ? strings.doneProblem(file.problem.lines.length)
-    : strings.done(file.record.events.filter((event) => event.kind !== 'setup').length);
+export const conversionMessage = (conversion: Conversion, strings: UiStrings): string =>
+  conversion.kind === 'problem'
+    ? strings.doneProblem(conversion.lines)
+    : strings.done(conversion.moves);

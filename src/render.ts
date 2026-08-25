@@ -4,13 +4,17 @@ import type { Color, GameEvent, GameRecord, ProblemRecord, Vertex } from './type
 const opposite = (color: Color): Color => (color === 'B' ? 'W' : 'B');
 
 /**
- * One event as one line, or nothing at all for a setup, which is stated once
- * elsewhere rather than repeated wherever it appears.
+ * One event as one line — or two, when stones of both colours appear at once.
  *
  * Shared by both renderers, so a move inside a problem's answer is worded
  * exactly as the same move inside a game — including the stones it captured.
  * That is not a resemblance to be checked afterwards: there is one sentence and
  * both paths ask for it.
+ *
+ * A setup reaching here is one that happens during play. The position a game or
+ * a problem opens with is stated by its own block above and is filtered out
+ * before this is called; what is left is stones appearing part-way through, and
+ * saying nothing about those is what leaves a reader's board behind the text.
  */
 const speak = (
   event: GameEvent,
@@ -18,7 +22,13 @@ const speak = (
   format: (vertex: Vertex) => string,
 ): string[] => {
   if (event.kind === 'setup') {
-    return [];
+    return (['B', 'W'] as const).flatMap((color) => {
+      const placements = event.stones
+        .filter((stone) => stone.color === color)
+        .map((stone) => format(stone.at));
+
+      return placements.length > 0 ? [locale.placed(color, placements)] : [];
+    });
   }
   if (event.kind === 'pass') {
     return [locale.pass(event.n, event.color)];
@@ -71,18 +81,57 @@ export const render = (record: GameRecord, locale: Locale): string => {
     record.meta.komi === undefined ? undefined : locale.number(record.meta.komi),
   );
 
-  const setup = record.events.find((event) => event.kind === 'setup');
-  const handicapStones = setup?.stones.map((stone) => format(stone.at)) ?? [];
-  const handicapCount = record.meta.handicap ?? handicapStones.length;
+  // Where the game starts. Everything before it states the position the players
+  // sat down to; everything after it is something that happens during the game,
+  // and the two cannot share a sentence.
+  const start = record.events.findIndex((event) => event.kind !== 'setup');
+  const opened = record.events.slice(0, start === -1 ? record.events.length : start);
+  const position = opened.flatMap((event) => (event.kind === 'setup' ? event.stones : []));
+
+  /**
+   * A handicap is black stones, placed before anybody moves. Both halves matter,
+   * and neither used to be checked: the first setup event anywhere in the file
+   * was announced under this label whatever colour it was and wherever it sat, so
+   * a game resumed from a diagram opened with white stones called a handicap.
+   */
+  const isHandicap = position.length > 0 && position.every((stone) => stone.color === 'B');
+  const handicapCount = record.meta.handicap ?? (isHandicap ? position.length : 0);
+
   if (handicapCount > 0) {
-    addMeta(labels.handicap, locale.handicap(handicapCount, handicapStones));
+    addMeta(
+      labels.handicap,
+      locale.handicap(
+        handicapCount,
+        position.filter((stone) => stone.color === 'B').map((stone) => format(stone.at)),
+      ),
+    );
+  } else if (position.length > 0) {
+    // Not a handicap, so it is a position — and a position is stated the way a
+    // problem states one, by colour. The first player is named first, as there.
+    const first = record.events.find((event) => event.kind !== 'setup')?.color ?? 'B';
+    for (const color of [first, opposite(first)]) {
+      const placements = position
+        .filter((stone) => stone.color === color)
+        .map((stone) => format(stone.at));
+
+      if (placements.length > 0) {
+        header.push(locale.setup(color, placements));
+      }
+    }
   }
 
   if (record.meta.result !== undefined) {
     addMeta(labels.result, locale.result(record.meta.result));
   }
 
-  const body = record.events.flatMap((event) => speak(event, locale, format));
+  // Setup before the first move belongs to the header above; setup after it is an
+  // event, and `speak` says it where it happens rather than dropping it. Dropping
+  // it is what the old code did everywhere except the one line it mislabelled,
+  // which left the reader's board holding fewer stones than the rules were being
+  // applied to.
+  const body = record.events.flatMap((event, index) =>
+    index < opened.length ? [] : speak(event, locale, format),
+  );
 
   return [...header, '', ...body].join('\n');
 };

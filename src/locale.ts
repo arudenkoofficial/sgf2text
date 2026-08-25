@@ -54,6 +54,23 @@ export type Locale = {
   setup(color: Color, stones: string[]): string;
 
   /**
+   * Stones that appear on the board part-way through, placed rather than played.
+   * SGF allows it and files use it — a position resumed from a diagram, a stone
+   * added to illustrate a point.
+   *
+   * It has to be said where it happens, and that is the whole reason this exists
+   * separately from `setup`. The stones reach the board either way, because the
+   * rules are applied to them and the captures around them are found; a reader
+   * who is not told they appeared is left with a board that no longer matches the
+   * text, which is the one failure this converter exists to prevent.
+   *
+   * Worded after a capture on purpose — placed and captured are the two things
+   * that happen to stones without anybody playing a move, and a listener who has
+   * learnt one sentence should recognise the other.
+   */
+  placed(color: Color, stones: string[]): string;
+
+  /**
    * The heading that opens the answer. It states how much of it there is, and it
    * is also what lets a listener stop before hearing the solution — so it has to
    * arrive before any of it.

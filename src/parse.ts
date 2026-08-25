@@ -23,9 +23,16 @@ export type ParsedGame = {
  */
 export type PlayedMove = Exclude<ParsedMove, { kind: 'setup' }>;
 
-/** One path through a problem's tree, from the first move to a leaf. */
+/**
+ * One path through a problem's tree, from the first move to a leaf.
+ *
+ * `moves` holds setups as well as moves, because a branch is allowed to add
+ * stones as it goes — "and now suppose there is a white stone here". They are
+ * kept in the order the file writes them so that the rules are applied to the
+ * same board the reader is told to build.
+ */
 export type ParsedLine = {
-  moves: PlayedMove[];
+  moves: ParsedMove[];
   correct: boolean;
 };
 
@@ -287,8 +294,12 @@ const leaves = (node: SgfNode): number =>
  * it. A game's variations are left out on purpose; a problem's variations are
  * the answer, and the attempts that fail are half of what it teaches.
  *
- * A path with no moves is not a line: a file that records a position and nothing
- * else has a setup to read out and no answer.
+ * An empty path is not a line: a file that records a position and nothing else
+ * has a setup to read out and no answer.
+ *
+ * Stones a branch adds as it goes are carried along with its moves. The nodes
+ * that state the opening position are excluded — those are the problem's own
+ * setup, said once in the statement rather than at the head of all eight lines.
  *
  * A branch holding a move that cannot be read is dropped rather than allowed to
  * abort the file. This is the one place the two genres differ in what they must
@@ -298,11 +309,15 @@ const leaves = (node: SgfNode): number =>
  * the answer is intact — so the branch goes, and the count goes with it, because
  * a solution quietly one line short is a solution she cannot trust.
  */
-const expandLines = (root: SgfNode, size: number): { lines: ParsedLine[]; unreadable: number } => {
+const expandLines = (
+  root: SgfNode,
+  size: number,
+  stated: ReadonlySet<SgfNode>,
+): { lines: ParsedLine[]; unreadable: number } => {
   const lines: ParsedLine[] = [];
   let unreadable = 0;
 
-  const walk = (node: SgfNode, path: PlayedMove[]): void => {
+  const walk = (node: SgfNode, path: ParsedMove[]): void => {
     let move: PlayedMove | null;
     try {
       move = parseMove(node, size);
@@ -315,7 +330,12 @@ const expandLines = (root: SgfNode, size: number): { lines: ParsedLine[]; unread
       throw error;
     }
 
-    const here = move === null ? path : [...path, move];
+    const added = stated.has(node) ? [] : parseSetup(node);
+    const here = [
+      ...path,
+      ...(added.length > 0 ? [{ kind: 'setup' as const, stones: added }] : []),
+      ...(move === null ? [] : [move]),
+    ];
 
     if (node.children.length === 0) {
       if (here.length > 0) {
@@ -350,13 +370,14 @@ const hasMove = (node: SgfNode): boolean =>
  */
 const opening = (root: SgfNode): SgfNode[] => {
   const nodes: SgfNode[] = [];
+  let node: SgfNode | undefined = root;
 
-  for (const node of mainLine(root)) {
-    if (hasMove(node)) {
-      break;
-    }
-
+  while (node !== undefined && !hasMove(node)) {
     nodes.push(node);
+    // A node with siblings is already one answer among several, whatever it holds
+    // — following the first of them would fold one branch's stones into the
+    // position and make the branch itself vanish, having nothing left of its own.
+    node = node.children.length === 1 ? node.children[0] : undefined;
   }
 
   return nodes;
@@ -396,11 +417,8 @@ const recordsPlayedGame = (root: SgfNode): boolean =>
  * Branching is still not a signal, common as it is in problems: a reviewed game
  * is full of variations and is still a game.
  */
-const isProblem = (root: SgfNode): boolean =>
-  !recordsPlayedGame(root) &&
-  opening(root)
-    .flatMap(parseSetup)
-    .some((stone) => stone.color === 'W');
+const isProblem = (root: SgfNode, stated: SgfNode[]): boolean =>
+  !recordsPlayedGame(root) && stated.flatMap(parseSetup).some((stone) => stone.color === 'W');
 
 const parseTree = (input: string): SgfNode => {
   if (input.trim() === '') {
@@ -448,13 +466,10 @@ const gameFrom = (root: SgfNode): ParsedGame => {
   return { size, meta, moves };
 };
 
-const problemFrom = (root: SgfNode): ParsedProblem => {
+const problemFrom = (root: SgfNode, nodes: SgfNode[]): ParsedProblem => {
   const size = parseSize(root);
-  // Every node that states the position, not the root alone: the file is free to
-  // spend the root on `GM`/`FF`/`SZ` and set the stones out one node down.
-  const nodes = opening(root);
-  const { lines, unreadable } = expandLines(root, size);
-  const first = lines[0]?.moves[0];
+  const { lines, unreadable } = expandLines(root, size, new Set(nodes));
+  const first = lines[0]?.moves.find((move) => move.kind !== 'setup');
 
   return {
     size,
@@ -477,8 +492,12 @@ export const parseGame = (input: string): ParsedGame => gameFrom(parseTree(input
 /** Parses SGF text into whichever of the two genres it turns out to record. */
 export const parseSgf = (input: string): ParsedSgf => {
   const root = parseTree(input);
+  // The nodes that state the position, found once. They decide the genre and then
+  // supply the position itself, and computing them twice would leave the one
+  // place a problem's setup is read in two places.
+  const stated = opening(root);
 
-  return isProblem(root)
-    ? { kind: 'problem', problem: problemFrom(root) }
+  return isProblem(root, stated)
+    ? { kind: 'problem', problem: problemFrom(root, stated) }
     : { kind: 'game', game: gameFrom(root) };
 };

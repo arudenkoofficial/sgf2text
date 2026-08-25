@@ -84,6 +84,12 @@ export type UiStrings = {
    * Separate from `done`, and not a plural of it. A problem's answer is a set of
    * lines rather than one run of moves, and the moves of every line added
    * together is a number about nothing.
+   *
+   * Zero is its own sentence rather than a count of nothing, for the reason
+   * `locale.solution` gives one layer down: "lines in the solution: 0" is heard
+   * as a number, and a listener who hears a number waits for the list. The page
+   * used to say it while the result beside it read "the file records no
+   * solution" — a count and a denial of the same fact, in that order.
    */
   doneProblem: (variations: number) => string;
   emptyResult: string;
@@ -118,17 +124,17 @@ export type UiStrings = {
 const CATALOGUE = {
   en: {
     htmlLang: 'en',
-    title: 'sgf2text — a Go game as readable text',
+    title: 'sgf2text — Go games and problems as readable text',
     // Shorter and flatter than the tagline: this one is read out of a search
     // result or a link preview, out of any context that would explain it.
     description:
-      'Converts an SGF Go game record into plain text a screen reader can speak, with the coordinates of every move and the stones it captures.',
+      'Converts SGF Go files — game records and problems alike — into plain text a screen reader can speak, with the coordinates of every move and the stones it captures.',
     ogLocale: 'en_US',
     skipLink: 'Skip to the Converter',
-    subtitle: 'A game record, written out as text',
+    subtitle: 'Game records and problems, written out as text',
     tagline:
-      'Turns an SGF Go game record into text a screen reader can read out: move by move, with coordinates and captured stones.',
-    sgfLabel: 'Paste an SGF game record',
+      'Turns an SGF Go file — a game record or a problem — into text a screen reader can read out: move by move, with coordinates and captured stones.',
+    sgfLabel: 'Paste an SGF game record or problem',
     fileLabel: 'Or choose an .sgf file',
     langLabel: 'Page language',
     convert: 'Convert',
@@ -137,20 +143,20 @@ const CATALOGUE = {
     appName: 'SGF to text',
     inputHeading: 'Input',
     resultHeading: 'Result',
-    placeholder: 'The game record will appear here.',
-    privacy: 'The game is converted in your browser and is never sent anywhere.',
+    placeholder: 'The converted text will appear here.',
+    privacy: 'The file is converted in your browser and is never sent anywhere.',
     creditsBefore: 'The idea and the shape of the output come from ',
     creditsBetween:
       ', by the Japan Go Association for the Visually Impaired. Source code: ',
     keepSummary: 'Keep this page on your home screen',
     keepInstruction:
       'Open your browser’s Share control and choose “Add to Home Screen”. In Safari on iPhone that control is in the toolbar at the bottom of the screen, and VoiceOver announces it as “Share”. This page cannot do it for you: adding an icon is the browser’s own action, and a page is not allowed to perform it.',
-    emptyInput: 'The field is empty: paste a game record or choose a file.',
+    emptyInput: 'The field is empty: paste a game record or a problem, or choose a file.',
     fileFailed: 'The file could not be read.',
-    parseFailed: 'The game record could not be parsed.',
+    parseFailed: 'The file could not be parsed.',
     errors: {
-      'empty-input': 'The field is empty: paste a game record or choose a file.',
-      'not-sgf': 'This does not look like an SGF game record. Check that the file is the right one.',
+      'empty-input': 'The field is empty: paste a game record or a problem, or choose a file.',
+      'not-sgf': 'This does not look like an SGF file. Check that the file is the right one.',
       'rectangular-board': 'Rectangular boards are not supported yet.',
       'unreadable-size': 'The record states a board size that cannot be read.',
       'unreadable-move': 'The record contains a move that could not be read.',
@@ -158,8 +164,10 @@ const CATALOGUE = {
     },
     done: (moves: number) => `Done. Moves in the record: ${moves}.`,
     doneProblem: (variations: number) =>
-      `Done. This is a problem. Lines in the solution: ${variations}.`,
-    emptyResult: 'There is nothing to copy yet: convert a game first.',
+      variations === 0
+        ? 'Done. This is a problem, and the file records no solution.'
+        : `Done. This is a problem. Lines in the solution: ${variations}.`,
+    emptyResult: 'There is nothing to copy yet: convert a file first.',
     copied: 'The text has been copied to the clipboard.',
     copyFailed: 'Copying failed. Select the result text and copy it manually.',
     shared: 'The page has been shared.',
@@ -168,15 +176,15 @@ const CATALOGUE = {
   },
   ru: {
     htmlLang: 'ru',
-    title: 'sgf2text — запись партии Го текстом',
+    title: 'sgf2text — партии и задачи Го текстом',
     description:
-      'Преобразует SGF-запись партии Го в текст, который читает скринридер: координаты каждого хода и снятые им камни.',
+      'Преобразует SGF-файлы Го — и записи партий, и задачи — в текст, который читает скринридер: координаты каждого хода и снятые им камни.',
     ogLocale: 'ru_RU',
     skipLink: 'Перейти к конвертеру',
-    subtitle: 'Запись партии — текстом',
+    subtitle: 'Партии и задачи — текстом',
     tagline:
-      'Превращает SGF-запись партии Го в текст, который читает скринридер: ход за ходом, с координатами и снятыми камнями.',
-    sgfLabel: 'Вставьте SGF-запись партии',
+      'Превращает SGF-файл Го — запись партии или задачу — в текст, который читает скринридер: ход за ходом, с координатами и снятыми камнями.',
+    sgfLabel: 'Вставьте SGF: запись партии или задачу',
     fileLabel: 'Или выберите файл .sgf',
     langLabel: 'Язык страницы',
     convert: 'Преобразовать',
@@ -185,19 +193,19 @@ const CATALOGUE = {
     appName: 'SGF в текст',
     inputHeading: 'Ввод',
     resultHeading: 'Результат',
-    placeholder: 'Здесь появится запись партии.',
-    privacy: 'Партия обрабатывается прямо в браузере и никуда не отправляется.',
+    placeholder: 'Здесь появится текст.',
+    privacy: 'Файл обрабатывается прямо в браузере и никуда не отправляется.',
     creditsBefore: 'Идея и структура вывода — ',
     creditsBetween: ', Японская ассоциация Го для незрячих. Исходный код: ',
     keepSummary: 'Сохранить страницу на домашний экран',
     keepInstruction:
       'Откройте в браузере элемент «Поделиться» и выберите «На экран „Домой“». В Safari на iPhone этот элемент находится на панели инструментов внизу экрана, VoiceOver называет его «Поделиться». Сама страница этого сделать не может: добавление значка — действие браузера, странице оно недоступно.',
-    emptyInput: 'Поле пустое: вставьте запись партии или выберите файл.',
+    emptyInput: 'Поле пустое: вставьте запись партии или задачу либо выберите файл.',
     fileFailed: 'Не удалось прочитать файл.',
-    parseFailed: 'Не удалось разобрать запись партии.',
+    parseFailed: 'Не удалось разобрать файл.',
     errors: {
-      'empty-input': 'Поле пустое: вставьте запись партии или выберите файл.',
-      'not-sgf': 'Это не похоже на SGF-запись партии. Проверьте, тот ли файл выбран.',
+      'empty-input': 'Поле пустое: вставьте запись партии или задачу либо выберите файл.',
+      'not-sgf': 'Это не похоже на SGF-файл. Проверьте, тот ли файл выбран.',
       'rectangular-board': 'Прямоугольные доски пока не поддерживаются.',
       'unreadable-size': 'В записи указан непонятный размер доски.',
       'unreadable-move': 'В записи есть ход, который не удалось прочитать.',
@@ -205,8 +213,10 @@ const CATALOGUE = {
     },
     done: (moves: number) => `Готово. Ходов в записи: ${moves}.`,
     doneProblem: (variations: number) =>
-      `Готово. Это задача. Вариантов в решении: ${variations}.`,
-    emptyResult: 'Копировать пока нечего: сначала преобразуйте партию.',
+      variations === 0
+        ? 'Готово. Это задача, решения в файле нет.'
+        : `Готово. Это задача. Вариантов в решении: ${variations}.`,
+    emptyResult: 'Копировать пока нечего: сначала преобразуйте файл.',
     copied: 'Текст скопирован в буфер обмена.',
     copyFailed: 'Не удалось скопировать. Выделите текст результата и скопируйте вручную.',
     shared: 'Страница отправлена.',

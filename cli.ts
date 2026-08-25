@@ -2,13 +2,14 @@ import { readFileSync } from 'node:fs';
 import process from 'node:process';
 import { DEFAULT_LOCALE, LOCALE_IDS, sgfToText } from './src/index.ts';
 
-const USAGE = `sgf2text — convert an SGF Go game record into readable text.
+const USAGE = `sgf2text — convert an SGF Go file into readable text.
 
 Usage:
   node cli.ts [options] [file.sgf]
 
-Reads the game from <file.sgf>, or from standard input when no file is given,
-and writes the converted text to standard output.
+Reads <file.sgf>, or standard input when no file is given, and writes the
+converted text to standard output. Game records and problems are both read;
+which one the file holds is worked out from the file itself.
 
 Options:
   --lang <id>   Output language: ${LOCALE_IDS.join(', ')} (default: ${DEFAULT_LOCALE})
@@ -16,6 +17,7 @@ Options:
 
 Examples:
   node cli.ts game.sgf
+  node cli.ts problem.sgf
   node cli.ts --lang en game.sgf > game.txt
   cat game.sgf | node cli.ts
 `;

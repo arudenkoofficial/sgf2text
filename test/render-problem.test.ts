@@ -137,6 +137,18 @@ test('says how much of the solution could not be read', () => {
   );
 });
 
+test('says a stone that appears inside a line, in the wording a game uses', () => {
+  // The same sentence as on the game path, and it has to be: a stone appearing
+  // mid-answer is the same event whichever genre the file belongs to, and a
+  // reader who has learnt one sentence should not have to learn a second.
+  const all = lines(renderSgf('(;GM[1]SZ[9]AB[hh]AW[dd]PL[B];B[ba](;AW[aa];B[ab]))'));
+
+  const placed = all.indexOf('Поставлено 1 камень белых: A9');
+  assert.ok(placed > 0, 'the stone that appears is announced inside the line');
+  assert.match(all[placed - 1] ?? '', /^1\. Чёрные B9$/);
+  assert.match(all[placed + 1] ?? '', /^2\. Чёрные A8 — снято 1 камень белых: A9$/);
+});
+
 test('stays silent about a solution that is whole', () => {
   assert.doesNotMatch(renderFixture('problem-attack.sgf'), /прочитать не удалось/);
 });

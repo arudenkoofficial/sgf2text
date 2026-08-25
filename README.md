@@ -159,6 +159,9 @@ and each has a test here:
   as `PB[FREDDY]`;
 - handicap games, listing the coordinates of the stones and not only their
   number;
+- stones placed rather than played part-way through — a position resumed from a
+  diagram, a stone added to make a point — announced where they appear instead of
+  reaching the board in silence;
 - problem files, which it does not mistake for a handicap game of twenty-seven
   stones, and whose answer it reads out in full rather than one branch of it.
 
@@ -179,6 +182,11 @@ group. A move with no liberty of its own still captures.
   which is usually English. Nothing marks it as such for a screen reader.
 - A deep problem tree produces a long text. Nothing caps it: a silent cap on an
   accessibility tool is worse than a text that takes a while.
+- `AE`, which removes a stone, is ignored. The stone stays on the board and in
+  the text, so the two still agree with each other — but the position is not the
+  one the file records.
+- A branch of a problem holding a move that cannot be read is dropped rather than
+  failing the whole file, and the heading says how many lines went with it.
 - No reverse conversion (text back to SGF).
 - No Japanese locale yet. The coordinate system is a separate concept, so you can
   add one without reworking the renderer.

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   conversionMessage,
+  summarise,
   destinationFor,
   fieldInvalidity,
   staleRegions,
@@ -216,7 +217,7 @@ test('a problem is announced as a problem, not as a game of many moves', () => {
   const problem = sgfToDocument(fixture('problem-attack.sgf'));
 
   for (const language of SUPPORTED_LANGUAGES) {
-    const said = conversionMessage(problem, stringsFor(language));
+    const said = conversionMessage(summarise(problem), stringsFor(language));
 
     assert.match(said, /\b8\b/, `${language} states how many lines the answer holds`);
     assert.doesNotMatch(said, /\b45\b/, `${language} does not sum the moves of every line`);
@@ -226,17 +227,34 @@ test('a problem is announced as a problem, not as a game of many moves', () => {
 test('a game is still announced by the moves in it', () => {
   const game = sgfToDocument(fixture('plain.sgf'));
 
-  assert.match(conversionMessage(game, stringsFor('ru')), /\b7\b/);
+  assert.match(conversionMessage(summarise(game), stringsFor('ru')), /\b7\b/);
   assert.notEqual(
-    conversionMessage(game, stringsFor('ru')),
-    conversionMessage(sgfToDocument(fixture('problem-attack.sgf')), stringsFor('ru')),
+    conversionMessage(summarise(game), stringsFor('ru')),
+    conversionMessage(summarise(sgfToDocument(fixture('problem-attack.sgf'))), stringsFor('ru')),
     'the two genres are not announced in the same words',
   );
 });
 
+/**
+ * The one count that must not be spoken as a count. `test/locales.test.ts` holds
+ * the same rule for the heading in the converted text; this is the announcement
+ * beside it, which had no such guard and said "lines in the solution: 0" while
+ * the text on the page read "the file records no solution".
+ */
+test('a problem with no solution is not announced as a count of nothing', () => {
+  const problem = sgfToDocument(fixture('problem-position-only.sgf'));
+
+  for (const language of SUPPORTED_LANGUAGES) {
+    const said = conversionMessage(summarise(problem), stringsFor(language));
+
+    assert.doesNotMatch(said, /\b0\b/, `${language} does not read a zero out`);
+    assert.match(said, /задач|problem/i, `${language} still says what the file is`);
+  }
+});
+
 // The handicap stones are placed, not played, and were never part of the count.
 test('setup stones are not counted as moves', () => {
-  assert.match(conversionMessage(sgfToDocument(fixture('handicap4.sgf')), stringsFor('ru')), /\b3\b/);
+  assert.match(conversionMessage(summarise(sgfToDocument(fixture('handicap4.sgf'))), stringsFor('ru')), /\b3\b/);
 });
 
 test('exactly one of the four combinations is an event', () => {

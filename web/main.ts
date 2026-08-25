@@ -4,6 +4,7 @@ import {
   destinationFor,
   fieldInvalidity,
   staleRegions,
+  summarise,
   survivesRestatement,
 } from './announcement.ts';
 import type { Destination, Standing, Subject, Tone } from './announcement.ts';
@@ -273,12 +274,14 @@ const convert = (): void => {
   }
 
   try {
-    // Read once and kept, rather than converted straight to text: what the file
-    // turned out to be decides what is announced, and the announcement is
-    // restated whenever the language changes.
+    // Read once, then summarised: what the file turned out to be decides what is
+    // announced, and the announcement is restated whenever the language changes.
+    // Only the summary is captured, so the record itself is free once the text is
+    // on the page rather than held for as long as the message stands.
     const file = sgfToDocument(input.value);
+    const converted = summarise(file);
     showResult(documentToText(file, { locale: language.value }));
-    announce('record', (strings) => conversionMessage(file, strings));
+    announce('record', (strings) => conversionMessage(converted, strings));
   } catch (error) {
     // The input is left exactly as the visitor typed it, so it can be corrected.
     // Only translated wording is announced: the library's own messages are

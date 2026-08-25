@@ -123,6 +123,11 @@ export const ru: Locale = {
 
   setup: (color, placements) => `${SIDE[color]}: ${stones(placements.length)} — ${placements.join(', ')}`,
 
+  // «Поставлено» — как «снято» в записи хода: безличная форма согласуется с любым
+  // числом, и слушателю не приходится учить вторую конструкцию.
+  placed: (color, placements) =>
+    `Поставлено ${stones(placements.length)} ${SIDE_GENITIVE[color]}: ${placements.join(', ')}`,
+
   solution: (count) =>
     count === 0 ? 'Решения в файле нет.' : `Решение: ${variations(count)}.`,
 

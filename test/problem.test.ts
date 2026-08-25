@@ -210,14 +210,62 @@ test('a line holds every move from the root of its branch, not only its leaf', (
   );
 
   // Numbered from the first move of the line, so it can be followed on a board
-  // that starts from the setup position.
+  // that starts from the setup position. Counted over what was played: a line may
+  // also place stones as it goes, and those carry no number.
   for (const line of problem.lines) {
+    const played = line.events.filter((event) => event.kind !== 'setup');
+
     assert.deepEqual(
-      line.events.map((event) => event.n),
-      line.events.map((_, index) => index + 1),
+      played.map((event) => event.n),
+      played.map((_, index) => index + 1),
       `line ${line.n} is numbered from 1`,
     );
   }
+});
+
+/**
+ * Stones a branch adds as it goes — "and now suppose there is a white stone
+ * here". They used to be dropped, which left the reader building a position the
+ * file does not record and the rules being applied to a different one.
+ */
+test('a stone placed inside a line is kept, in the order the file writes it', () => {
+  const problem = problemOf('(;GM[1]SZ[9]AB[hh]AW[dd]PL[B];B[ba](;AW[aa];B[ab]))');
+
+  const [line] = problem.lines;
+  assert.ok(line !== undefined);
+  assert.deepEqual(
+    line.events.map((event) => event.kind),
+    ['move', 'setup', 'move'],
+  );
+
+  // And the rules were applied to it: the move after it takes the stone.
+  const last = line.events[2];
+  assert.equal(last?.kind === 'move' ? last.captures.length : -1, 1);
+});
+
+test('stones placed before any move belong to the position, not to a line', () => {
+  // No move separates them from the root, so they are part of what the reader
+  // sets out before starting — not something that happens during an answer.
+  const problem = problemOf('(;GM[1]FF[4]SZ[9]AB[cc][dd]AW[cd][dc]PL[W];AB[ee];W[ce];B[de])');
+
+  assert.equal(problem.setup.length, 5);
+  assert.deepEqual(
+    problem.lines[0]?.events.map((event) => event.kind),
+    ['move', 'move'],
+  );
+});
+
+test('a branch that only places a stone is a line of its own', () => {
+  // It used to vanish: a node with no move contributed nothing, so the branch had
+  // an empty path and was never recorded. Following it as though it were part of
+  // the position would be worse — the other branch would inherit its stone.
+  const problem = problemOf('(;GM[1]SZ[9]AW[cc]PL[B](;AB[dd])(;B[ee]))');
+
+  assert.equal(problem.setup.length, 1, 'the branch keeps its own stone');
+  assert.deepEqual(
+    problem.lines.map((line) => line.events.map((event) => event.kind)),
+    [['setup'], ['move']],
+  );
 });
 
 test('a problem that records a position and no moves has no lines', () => {
@@ -238,8 +286,9 @@ test('a move that captures inside one line records what it removed', () => {
 
   const captures = problem.lines.flatMap((line) =>
     line.events
-      .filter((event) => event.kind === 'move' && event.captures.length > 0)
-      .map((event) => ({ line: line.n, n: event.n, at: event.kind === 'move' ? event.captures : [] })),
+      .filter((event) => event.kind === 'move')
+      .filter((event) => event.captures.length > 0)
+      .map((event) => ({ line: line.n, n: event.n, at: event.captures })),
   );
 
   assert.deepEqual(captures, [{ line: 2, n: 4, at: [{ x: 3, y: 7 }] }]);

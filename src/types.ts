@@ -73,7 +73,12 @@ export type ProblemLine = {
    * file said nothing, not that the line is wrong.
    */
   correct: boolean;
-  events: PlayedEvent[];
+  /**
+   * Everything the line does, in order: its moves, and any stones it places as it
+   * goes. The problem's own setup is not among them — that is stated once in the
+   * statement rather than repeated at the head of every line.
+   */
+  events: GameEvent[];
 };
 
 /**

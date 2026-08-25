@@ -103,6 +103,11 @@ export const en: Locale = {
 
   setup: (color, placements) => `${SIDE[color]}: ${stones(placements.length)} — ${placements.join(', ')}`,
 
+  // Shaped like the capture clause in `move`, so the two events that happen to
+  // stones without a move being played are heard as a matching pair.
+  placed: (color, placements) =>
+    `${stones(placements.length)} of ${SIDE[color].toLowerCase()} placed: ${placements.join(', ')}`,
+
   solution: (count) =>
     count === 0 ? 'The file records no solution.' : `Solution: ${variations(count)}.`,
 

@@ -25,9 +25,12 @@ const lineOf = (problem: ParsedProblem, line: ParsedLine, n: number): ProblemLin
   return {
     n,
     correct: line.correct,
-    // The setup is stated once in the problem itself; repeating it under every
-    // line would be the position read out eight times over.
-    events: played.events.filter((event) => event.kind !== 'setup'),
+    // The first event is the setup injected above, and only that one is dropped:
+    // the position is stated once in the problem itself, and repeating it under
+    // every line would be the whole board read out eight times over. A setup
+    // further down belongs to the line — a branch adding a stone as it goes — and
+    // survives, or the reader builds a board the rules were not applied to.
+    events: played.events.slice(1),
   };
 };
 
