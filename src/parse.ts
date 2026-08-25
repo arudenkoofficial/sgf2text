@@ -1,6 +1,6 @@
 import sgf from '@sabaki/sgf';
 import type { SgfNode } from '@sabaki/sgf';
-import { SgfError } from './errors.ts';
+import { isSgfError, SgfError } from './errors.ts';
 import type { Color, GameMeta, GameResult, SetupStone, Vertex } from './types.ts';
 
 /** A move as the file records it, before the game has been replayed. */
@@ -15,6 +15,41 @@ export type ParsedGame = {
   meta: GameMeta;
   moves: ParsedMove[];
 };
+
+/**
+ * A move that was played. A setup is stated for the position as a whole rather
+ * than reached by playing, so it is not one of these — a fact the type carries,
+ * which is what keeps callers from guarding against a case that cannot arise.
+ */
+export type PlayedMove = Exclude<ParsedMove, { kind: 'setup' }>;
+
+/** One path through a problem's tree, from the first move to a leaf. */
+export type ParsedLine = {
+  moves: PlayedMove[];
+  correct: boolean;
+};
+
+/** A parsed problem: a constructed position and every answer the file records. */
+export type ParsedProblem = {
+  size: number;
+  setup: SetupStone[];
+  toPlay: Color;
+  note?: string;
+  lines: ParsedLine[];
+  /**
+   * Lines the file records but that could not be read. Carried rather than
+   * dropped so the answer can say how much of itself is missing.
+   */
+  unreadable: number;
+};
+
+/**
+ * What the file turned out to be. The two genres are read by one parse and told
+ * apart once, so nothing downstream has to guess a second time.
+ */
+export type ParsedSgf =
+  | { kind: 'game'; game: ParsedGame }
+  | { kind: 'problem'; problem: ParsedProblem };
 
 const DEFAULT_SIZE = 19;
 
@@ -64,6 +99,13 @@ const textValue = (node: SgfNode, property: string): string | undefined => {
   }
 
   return raw;
+};
+
+/** A property that names a colour, such as `PL[W]`. */
+const colorValue = (node: SgfNode, property: string): Color | undefined => {
+  const raw = firstValue(node, property)?.trim().toUpperCase();
+
+  return raw === 'B' || raw === 'W' ? raw : undefined;
 };
 
 const parseSize = (root: SgfNode): number => {
@@ -161,7 +203,7 @@ const parseSetup = (node: SgfNode): SetupStone[] => {
   return stones;
 };
 
-const parseMove = (node: SgfNode, size: number): ParsedMove | null => {
+const parseMove = (node: SgfNode, size: number): PlayedMove | null => {
   for (const color of ['B', 'W'] as const) {
     const values = node.data[color];
     if (values === undefined) {
@@ -200,8 +242,167 @@ const mainLine = function* (root: SgfNode): Generator<SgfNode> {
   }
 };
 
-/** Parses SGF text into the game it records, without applying any Go rules. */
-export const parseGame = (input: string): ParsedGame => {
+/**
+ * The mark a problem collection puts on a line that solves the problem. It is a
+ * convention of the tools that write these files, not part of SGF, so it is
+ * never inverted: a file whose convention this does not cover yields lines with
+ * no verdict, which is a numbered list — while guessing would have the converter
+ * tell a blind player that a winning move loses.
+ *
+ * The mark is read as a label rather than as the whole comment, because the
+ * collections that write it also annotate it: `C[RIGHT — the vital point]` is
+ * the same mark with an explanation after it, and demanding the bare word threw
+ * the verdict away on every line of such a file. A label is either the whole
+ * comment or is set off from what follows by punctuation, which is what keeps
+ * prose that merely opens with the word — "Right, so black must…" — from being
+ * read as a verdict.
+ */
+const CORRECT_MARK = /^RIGHT\s*(?:$|[.:;—–-])/;
+
+const isCorrect = (node: SgfNode): boolean =>
+  CORRECT_MARK.test((firstValue(node, 'C') ?? '').trim().toUpperCase());
+
+/**
+ * A run of blank lines is a silence, and a long silence read aloud is the end of
+ * the text as far as a listener can tell. One blank line is a paragraph break;
+ * more is a false ending.
+ */
+const collapseBlankLines = (text: string): string =>
+  text.replace(/\r\n?/g, '\n').replace(/\n{3,}/g, '\n\n');
+
+const parseNote = (root: SgfNode): string | undefined => {
+  const raw = textValue(root, 'C');
+
+  return raw === undefined ? undefined : collapseBlankLines(raw.trim());
+};
+
+/** How many lines a subtree holds, counted without reading any of its moves. */
+const leaves = (node: SgfNode): number =>
+  node.children.length === 0
+    ? 1
+    : node.children.reduce((total, child) => total + leaves(child), 0);
+
+/**
+ * Every leaf of the tree, depth first, as the whole path of moves that reaches
+ * it. A game's variations are left out on purpose; a problem's variations are
+ * the answer, and the attempts that fail are half of what it teaches.
+ *
+ * A path with no moves is not a line: a file that records a position and nothing
+ * else has a setup to read out and no answer.
+ *
+ * A branch holding a move that cannot be read is dropped rather than allowed to
+ * abort the file. This is the one place the two genres differ in what they must
+ * survive: a game is read along its main line, so a corrupt byte in a variation
+ * is a byte nobody visits, while every branch of a problem is content. Refusing
+ * the whole file over one of them leaves a reader with nothing, when the rest of
+ * the answer is intact — so the branch goes, and the count goes with it, because
+ * a solution quietly one line short is a solution she cannot trust.
+ */
+const expandLines = (root: SgfNode, size: number): { lines: ParsedLine[]; unreadable: number } => {
+  const lines: ParsedLine[] = [];
+  let unreadable = 0;
+
+  const walk = (node: SgfNode, path: PlayedMove[]): void => {
+    let move: PlayedMove | null;
+    try {
+      move = parseMove(node, size);
+    } catch (error) {
+      if (isSgfError(error) && error.code === 'unreadable-move') {
+        unreadable += leaves(node);
+        return;
+      }
+
+      throw error;
+    }
+
+    const here = move === null ? path : [...path, move];
+
+    if (node.children.length === 0) {
+      if (here.length > 0) {
+        lines.push({ moves: here, correct: isCorrect(node) });
+      }
+
+      return;
+    }
+
+    for (const child of node.children) {
+      walk(child, here);
+    }
+  };
+
+  walk(root, []);
+
+  return { lines, unreadable };
+};
+
+/** Whether a node plays a stone, asked without reading where it lands. */
+const hasMove = (node: SgfNode): boolean =>
+  node.data['B'] !== undefined || node.data['W'] !== undefined;
+
+/**
+ * The nodes that state the position: the root, and the main line below it for as
+ * long as nobody has played.
+ *
+ * Reading the root alone was wrong. Plenty of files keep `GM`, `FF`, `SZ` and
+ * `AP` in the root and put the position in the node under it — a shape common
+ * enough that the converter saw an empty board, called the file a game, and
+ * announced a problem's black and white stones together as a handicap.
+ */
+const opening = (root: SgfNode): SgfNode[] => {
+  const nodes: SgfNode[] = [];
+
+  for (const node of mainLine(root)) {
+    if (hasMove(node)) {
+      break;
+    }
+
+    nodes.push(node);
+  }
+
+  return nodes;
+};
+
+/**
+ * The two properties a problem has no way to carry honestly: how the game ended,
+ * and the handicap it began from. Both describe something that was played.
+ *
+ * Everything else a game record holds is deliberately absent from this list.
+ * Player names, komi, date, event and place are all written by problem
+ * collections out of habit — the reference problem in this repository carries
+ * `PW[White]PB[Black]` and `KM[0.00]` — so they say nothing about which genre a
+ * file belongs to, and vetoing on them would send problems back to being read as
+ * handicap games.
+ */
+const PLAYED_GAME_PROPERTIES = ['RE', 'HA'] as const;
+
+const recordsPlayedGame = (root: SgfNode): boolean =>
+  PLAYED_GAME_PROPERTIES.some((property) => textValue(root, property) !== undefined);
+
+/**
+ * Whether the file sets a position to solve rather than recording a game.
+ *
+ * White setup stones are the evidence, and now the only evidence. A handicap
+ * places black stones alone, so `AB` by itself has never meant a problem — but
+ * `PL` used to count too, and that was the mistake. `PL[W]` is not the giveaway
+ * it resembles: it is precisely how a handicap game states that White moves
+ * first, which several servers write, so any such game came out as a problem
+ * with its players, its result and its handicap discarded. `PL` still says whose
+ * move it is; it no longer says what kind of file this is.
+ *
+ * A recorded result or handicap settles it before the stones are even examined,
+ * which is what keeps a game resumed from a diagram — a real game, carrying real
+ * white setup stones — on the game side.
+ *
+ * Branching is still not a signal, common as it is in problems: a reviewed game
+ * is full of variations and is still a game.
+ */
+const isProblem = (root: SgfNode): boolean =>
+  !recordsPlayedGame(root) &&
+  opening(root)
+    .flatMap(parseSetup)
+    .some((stone) => stone.color === 'W');
+
+const parseTree = (input: string): SgfNode => {
   if (input.trim() === '') {
     throw new SgfError('empty-input', 'The input is empty');
   }
@@ -218,6 +419,10 @@ export const parseGame = (input: string): ParsedGame => {
     throw new SgfError('not-sgf', 'The input contains no SGF game tree');
   }
 
+  return root;
+};
+
+const gameFrom = (root: SgfNode): ParsedGame => {
   const size = parseSize(root);
   const meta = parseMeta(root);
   const moves: ParsedMove[] = [];
@@ -241,4 +446,39 @@ export const parseGame = (input: string): ParsedGame => {
   }
 
   return { size, meta, moves };
+};
+
+const problemFrom = (root: SgfNode): ParsedProblem => {
+  const size = parseSize(root);
+  // Every node that states the position, not the root alone: the file is free to
+  // spend the root on `GM`/`FF`/`SZ` and set the stones out one node down.
+  const nodes = opening(root);
+  const { lines, unreadable } = expandLines(root, size);
+  const first = lines[0]?.moves[0];
+
+  return {
+    size,
+    setup: nodes.flatMap(parseSetup),
+    // Failing that, the colour that moves first in the tree says whose problem
+    // it is just as plainly. Failing that too, black moves first.
+    toPlay:
+      nodes.map((node) => colorValue(node, 'PL')).find((color) => color !== undefined) ??
+      first?.color ??
+      'B',
+    note: nodes.map(parseNote).find((text) => text !== undefined),
+    lines,
+    unreadable,
+  };
+};
+
+/** Parses SGF text into the game it records, without applying any Go rules. */
+export const parseGame = (input: string): ParsedGame => gameFrom(parseTree(input));
+
+/** Parses SGF text into whichever of the two genres it turns out to record. */
+export const parseSgf = (input: string): ParsedSgf => {
+  const root = parseTree(input);
+
+  return isProblem(root)
+    ? { kind: 'problem', problem: problemFrom(root) }
+    : { kind: 'game', game: gameFrom(root) };
 };

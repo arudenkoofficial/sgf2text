@@ -80,6 +80,12 @@ export type UiStrings = {
   parseFailed: string;
   errors: Record<SgfErrorCode, string>;
   done: (moves: number) => string;
+  /**
+   * Separate from `done`, and not a plural of it. A problem's answer is a set of
+   * lines rather than one run of moves, and the moves of every line added
+   * together is a number about nothing.
+   */
+  doneProblem: (variations: number) => string;
   emptyResult: string;
   copied: string;
   copyFailed: string;
@@ -151,6 +157,8 @@ const CATALOGUE = {
       'unknown-locale': 'That language is not supported.',
     },
     done: (moves: number) => `Done. Moves in the record: ${moves}.`,
+    doneProblem: (variations: number) =>
+      `Done. This is a problem. Lines in the solution: ${variations}.`,
     emptyResult: 'There is nothing to copy yet: convert a game first.',
     copied: 'The text has been copied to the clipboard.',
     copyFailed: 'Copying failed. Select the result text and copy it manually.',
@@ -196,6 +204,8 @@ const CATALOGUE = {
       'unknown-locale': 'Такой язык не поддерживается.',
     },
     done: (moves: number) => `Готово. Ходов в записи: ${moves}.`,
+    doneProblem: (variations: number) =>
+      `Готово. Это задача. Вариантов в решении: ${variations}.`,
     emptyResult: 'Копировать пока нечего: сначала преобразуйте партию.',
     copied: 'Текст скопирован в буфер обмена.',
     copyFailed: 'Не удалось скопировать. Выделите текст результата и скопируйте вручную.',

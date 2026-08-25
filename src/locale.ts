@@ -20,6 +20,8 @@ export type Locale = {
     komi: string;
     handicap: string;
     result: string;
+    /** The label a problem's statement is carried under. */
+    note: string;
   };
 
   boardSize(size: number): string;
@@ -40,4 +42,36 @@ export type Locale = {
 
   move(n: number, color: Color, coordinate: string, captured: string[], capturedFrom: Color): string;
   pass(n: number, color: Color): string;
+
+  /** Says the file is a problem rather than a game, and whose move it is. */
+  problem(toPlay: Color): string;
+
+  /**
+   * One colour's setup stones. Two lines rather than one: the colours are what a
+   * reader places by hand, and a run of coordinates that does not say which is
+   * which cannot be placed at all.
+   */
+  setup(color: Color, stones: string[]): string;
+
+  /**
+   * The heading that opens the answer. It states how much of it there is, and it
+   * is also what lets a listener stop before hearing the solution — so it has to
+   * arrive before any of it.
+   */
+  solution(lines: number): string;
+
+  /**
+   * Said when part of the answer could not be read, and only then. A reader who
+   * is told nothing assumes she heard the whole solution and goes looking for the
+   * refutation that is not there — so the shortfall is stated rather than left to
+   * be inferred from a number she has nothing to check against.
+   */
+  unreadableLines(count: number): string;
+
+  /**
+   * The heading of one line of the answer. `correct` is what the file said, and
+   * its absence is not a verdict: SGF has no way of marking a branch as failing,
+   * so an unmarked line is numbered and nothing more.
+   */
+  line(n: number, correct: boolean): string;
 };

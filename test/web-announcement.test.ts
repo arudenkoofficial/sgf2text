@@ -1,12 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
+  conversionMessage,
   destinationFor,
   fieldInvalidity,
   staleRegions,
   survivesRestatement,
 } from '../web/announcement.ts';
 import type { Destination, Subject, Tone } from '../web/announcement.ts';
+import { SUPPORTED_LANGUAGES, stringsFor } from '../web/ui-strings.ts';
+import { sgfToDocument } from '../src/index.ts';
+
+const fixture = (name: string): string =>
+  readFileSync(new URL(`../test/fixtures/${name}`, import.meta.url), 'utf8');
 
 /**
  * A message on this page carries two facts: how it is drawn, and what it is about. From
@@ -196,6 +203,40 @@ test('a finished confirmation in a notice does not survive', () => {
   // that shipped wrong: "the address of this page has been copied" restated on a
   // language change is a copy that did not happen.
   assert.equal(survivesRestatement({ tone: 'info', where: 'notice' }), false);
+});
+
+/**
+ * What the page says once a file has converted. The page used to count the lines
+ * of the finished text that begin with a numeral, which for a game is its moves
+ * and for a problem is every move of every line of the answer added together —
+ * forty-five for the reference problem, a number that describes nothing and that
+ * a listener has no way to check against anything.
+ */
+test('a problem is announced as a problem, not as a game of many moves', () => {
+  const problem = sgfToDocument(fixture('problem-attack.sgf'));
+
+  for (const language of SUPPORTED_LANGUAGES) {
+    const said = conversionMessage(problem, stringsFor(language));
+
+    assert.match(said, /\b8\b/, `${language} states how many lines the answer holds`);
+    assert.doesNotMatch(said, /\b45\b/, `${language} does not sum the moves of every line`);
+  }
+});
+
+test('a game is still announced by the moves in it', () => {
+  const game = sgfToDocument(fixture('plain.sgf'));
+
+  assert.match(conversionMessage(game, stringsFor('ru')), /\b7\b/);
+  assert.notEqual(
+    conversionMessage(game, stringsFor('ru')),
+    conversionMessage(sgfToDocument(fixture('problem-attack.sgf')), stringsFor('ru')),
+    'the two genres are not announced in the same words',
+  );
+});
+
+// The handicap stones are placed, not played, and were never part of the count.
+test('setup stones are not counted as moves', () => {
+  assert.match(conversionMessage(sgfToDocument(fixture('handicap4.sgf')), stringsFor('ru')), /\b3\b/);
 });
 
 test('exactly one of the four combinations is an event', () => {

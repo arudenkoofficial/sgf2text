@@ -1,6 +1,7 @@
 # sgf2text
 
-Converts an SGF Go game record into plain text that a screen reader can read out.
+Converts an SGF Go game record or problem into plain text that a screen reader
+can read out.
 
 A saved game is useless to a blind player: SGF is a dense machine format, and a
 screen reader pronounces it as noise. This turns it into a numbered move list.
@@ -22,6 +23,53 @@ Result: Black wins by resignation, white resigned
 Coordinates run `A`–`T` without `I`, and rows count from the bottom. Go servers
 use the same notation, so a game sounds the same in review as in live play.
 
+## Problems
+
+A problem file is not a game. Its position is set up rather than played, and its
+answer is a tree rather than a line, so the converter recognises one and reads it
+out differently: the stones named by colour, so the position can be laid out by
+hand, and then every line of the answer.
+
+```
+Board size: 9×9
+Problem. White to play.
+White: 2 stones — C6, D7
+Black: 2 stones — C7, D6
+
+Solution: 2 variations.
+
+Variation 1:
+1. White C5
+2. Black D5
+
+Variation 2:
+1. White D5
+2. Black C5
+```
+
+The side to move is read out first, and the file's own statement, when it has
+one, follows under `Note:`.
+
+Every line is written out from its first move, including the moves it shares with
+the line before it. A tree written once with its branches indented is shorter, and
+on screen it is plainly better; read aloud it cannot be followed at all, because a
+screen reader conveys no indentation and both your hands are on the board.
+
+Lines the file marks as solving the problem are marked. The rest are numbered and
+nothing more: SGF has no way of saying that a branch fails, so a line the
+converter can read no verdict for gets none rather than being called wrong.
+
+A file counts as a problem when it sets up white stones before anybody plays —
+in the root, or in the nodes below it, since a file is free to spend its root on
+`GM`, `FF` and `SZ` alone. A handicap places black stones only, so a handicap
+game stays a game, and so does a reviewed game full of variations. A recorded
+result or handicap settles it outright, which keeps a game resumed from a diagram
+on the game side.
+
+`PL` is not part of the test, tempting as it looks: it is how a handicap game
+says that White moves first. It still says whose move it is once the file is
+known to be a problem.
+
 ## Usage
 
 ### Command line
@@ -39,16 +87,24 @@ output, so redirecting into a file leaves either a whole game or nothing.
 ### Library
 
 ```js
-import { sgfToText, sgfToRecord } from 'sgf2text';
+import { sgfToText, sgfToRecord, sgfToDocument } from 'sgf2text';
 
-sgfToText(sgf);                  // text in Russian, the default
+sgfToText(sgf);                   // text in Russian, the default
 sgfToText(sgf, { locale: 'en' }); // text in English
-sgfToRecord(sgf);                // the game as data, no strings
+sgfToRecord(sgf);                 // the game as data, no strings
+sgfToDocument(sgf);               // { kind: 'game' | 'problem', … }, also no strings
 ```
 
 `sgfToRecord` returns the parsed game with no language in it: moves, passes,
 setup stones and the vertices each move captured. Other tools can reuse the
 parsing and the capture logic without the text layer.
+
+`sgfToDocument` reads the file as whichever of the two genres it turns out to be,
+returning a `GameRecord` or a `ProblemRecord` under a `kind`. Every line of a
+problem is replayed on its own from the setup position, so each carries the
+stones its own moves captured and no line can be contaminated by the branch
+beside it. `sgfToRecord` still answers with a game record whatever it is given,
+so callers written before problems existed are unaffected.
 
 Languages: `ru` (default), `en`.
 
@@ -102,7 +158,9 @@ and each has a test here:
 - player names that happen to contain the letters of another SGF property, such
   as `PB[FREDDY]`;
 - handicap games, listing the coordinates of the stones and not only their
-  number.
+  number;
+- problem files, which it does not mistake for a handicap game of twenty-seven
+  stones, and whose answer it reads out in full rather than one branch of it.
 
 SGF does not record captured stones, so the converter replays the game under the
 rules to find them, in the order the rules prescribe: it places the stone, lifts
@@ -111,9 +169,16 @@ group. A move with no liberty of its own still captures.
 
 ## Limitations
 
-- The converter renders only the main line of a game tree. It skips variations
-  instead of guessing at them.
-- Comments (`C[]`) do not appear in the output, and they do not break conversion.
+- In a game, the converter renders only the main line and skips variations
+  instead of guessing at them. In a problem the variations are the answer, so all
+  of them are read out.
+- Comments (`C[]`) appear only as a problem's statement, taken from the root node.
+  A comment on a move does not appear in the output, and it does not break
+  conversion.
+- A problem's statement is passed through in whatever language the file wrote it,
+  which is usually English. Nothing marks it as such for a screen reader.
+- A deep problem tree produces a long text. Nothing caps it: a silent cap on an
+  accessibility tool is worse than a text that takes a while.
 - No reverse conversion (text back to SGF).
 - No Japanese locale yet. The coordinate system is a separate concept, so you can
   add one without reworking the renderer.

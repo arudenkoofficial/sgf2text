@@ -11,6 +11,9 @@
  * record: the page had nothing to say about the record, and said it anyway.
  */
 
+import type { SgfDocument } from '../src/index.ts';
+import type { UiStrings } from './ui-strings.ts';
+
 export type Tone = 'info' | 'error';
 
 /**
@@ -125,3 +128,20 @@ export const staleRegions = <T extends { kind: Destination }>(
   regions: readonly T[],
   speaking: T,
 ): readonly T[] => regions.filter((region) => region !== speaking && region.kind === 'notice');
+
+/**
+ * What the page says about a file it has just converted.
+ *
+ * The count depends on what the file is. A game has moves; a problem has lines
+ * of an answer, and adding up the moves of all of them produces a number that
+ * describes nothing — which is what the page did, because it counted the lines
+ * of the finished text that begin with a numeral rather than asking the record.
+ *
+ * Here rather than in `main.ts`, for the reason everything else in this file is:
+ * the DOM shell is the one module a `node --test` run cannot import, so a choice
+ * left there is a choice no test can see.
+ */
+export const conversionMessage = (file: SgfDocument, strings: UiStrings): string =>
+  file.kind === 'problem'
+    ? strings.doneProblem(file.problem.lines.length)
+    : strings.done(file.record.events.filter((event) => event.kind !== 'setup').length);
