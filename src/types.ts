@@ -20,7 +20,20 @@ export type SetupStone = {
 export type GameEvent =
   | { kind: 'move'; n: number; color: Color; at: Vertex; captures: Vertex[] }
   | { kind: 'pass'; n: number; color: Color }
-  | { kind: 'setup'; stones: SetupStone[] };
+  /**
+   * The board edited rather than played on: stones appearing, and stones taken
+   * off by `AE`.
+   *
+   * `cleared` carries colours, which the file does not: `AE` names a point and
+   * says only that it should end up empty. What was standing there is known only
+   * after the rules have been applied, so it is filled in by `replay` — the same
+   * division as a move's captures, which SGF does not record either.
+   *
+   * Only points that actually held a stone appear. `AE` on an empty point is a
+   * statement about a board that already agrees with it, and announcing it would
+   * send a reader hunting for a stone she does not have.
+   */
+  | { kind: 'setup'; stones: SetupStone[]; cleared: SetupStone[] };
 
 /** How a game ended, parsed out of the SGF `RE` property. */
 export type GameResult =

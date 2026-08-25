@@ -1,7 +1,28 @@
 import type { Locale } from './locale.ts';
-import type { Color, GameEvent, GameRecord, ProblemRecord, Vertex } from './types.ts';
+import { settle } from './position.ts';
+import type { Color, GameEvent, GameRecord, ProblemRecord, SetupStone, Vertex } from './types.ts';
 
 const opposite = (color: Color): Color => (color === 'B' ? 'W' : 'B');
+
+/**
+ * One sentence per colour, and none for a colour with nothing to say.
+ *
+ * Split by colour rather than listed together because the colours are what a
+ * reader places and removes by hand: a run of coordinates that does not say which
+ * is which cannot be acted on at all.
+ */
+const byColour = (
+  stones: readonly SetupStone[],
+  format: (vertex: Vertex) => string,
+  say: (color: Color, coordinates: string[]) => string,
+): string[] =>
+  (['B', 'W'] as const).flatMap((color) => {
+    const coordinates = stones
+      .filter((stone) => stone.color === color)
+      .map((stone) => format(stone.at));
+
+    return coordinates.length > 0 ? [say(color, coordinates)] : [];
+  });
 
 /**
  * One event as one line — or two, when stones of both colours appear at once.
@@ -22,13 +43,12 @@ const speak = (
   format: (vertex: Vertex) => string,
 ): string[] => {
   if (event.kind === 'setup') {
-    return (['B', 'W'] as const).flatMap((color) => {
-      const placements = event.stones
-        .filter((stone) => stone.color === color)
-        .map((stone) => format(stone.at));
-
-      return placements.length > 0 ? [locale.placed(color, placements)] : [];
-    });
+    // Placed before taken off, which is the order they happen in and the order she
+    // works in: a point may be filled and emptied by the same node.
+    return [
+      ...byColour(event.stones, format, locale.placed),
+      ...byColour(event.cleared, format, locale.removed),
+    ];
   }
   if (event.kind === 'pass') {
     return [locale.pass(event.n, event.color)];
@@ -86,7 +106,14 @@ export const render = (record: GameRecord, locale: Locale): string => {
   // and the two cannot share a sentence.
   const start = record.events.findIndex((event) => event.kind !== 'setup');
   const opened = record.events.slice(0, start === -1 ? record.events.length : start);
-  const position = opened.flatMap((event) => (event.kind === 'setup' ? event.stones : []));
+  // What the edits settle to, not every stone they name. A file that puts a stone
+  // down and takes it off again before anybody moves describes a board without
+  // one, and that is what a reader is asked to build.
+  const position = settle(
+    opened
+      .filter((event) => event.kind === 'setup')
+      .map((event) => ({ stones: event.stones, cleared: event.cleared.map((stone) => stone.at) })),
+  );
 
   /**
    * A handicap is black stones, placed before anybody moves. Both halves matter,

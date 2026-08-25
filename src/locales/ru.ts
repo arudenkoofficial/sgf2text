@@ -128,6 +128,12 @@ export const ru: Locale = {
   placed: (color, placements) =>
     `Поставлено ${stones(placements.length)} ${SIDE_GENITIVE[color]}: ${placements.join(', ')}`,
 
+  // «Убрано», а не «снято»: «снято» занято взятием в записи хода, и спутать их
+  // нельзя. Корни разные на слух — у-бра-но и сня-то — при том же безличном
+  // обороте, что у «поставлено».
+  removed: (color, placements) =>
+    `Убрано с доски ${stones(placements.length)} ${SIDE_GENITIVE[color]}: ${placements.join(', ')}`,
+
   solution: (count) =>
     count === 0 ? 'Решения в файле нет.' : `Решение: ${variations(count)}.`,
 

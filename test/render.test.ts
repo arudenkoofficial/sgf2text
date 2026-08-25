@@ -171,6 +171,30 @@ test('a real handicap is still a handicap', () => {
   assert.doesNotMatch(text, /^Чёрные: 4 камня/m, 'a handicap is not restated as a position');
 });
 
+/**
+ * The distinction the whole of `AE` support rests on. A capture means somebody's
+ * move worked; a removal means the author edited the position. Both take a stone
+ * off her board, and her board cannot tell her which happened — only the sentence
+ * can, so the two must not share a verb.
+ */
+test('a stone taken off by AE is not worded as a capture', () => {
+  const removal = renderSgf('(;GM[1]SZ[9];B[ba];AW[aa];AE[aa];B[ab])');
+  const capture = renderSgf('(;GM[1]SZ[9];B[ba];AW[aa];B[ab])');
+
+  assert.match(removal, /^Убрано с доски 1 камень белых: A9$/m);
+  assert.doesNotMatch(removal, /снято/, 'nothing was captured, and nothing says so');
+  assert.match(capture, /снято 1 камень белых: A9/);
+  assert.doesNotMatch(capture, /Убрано/);
+});
+
+test('a point emptied before the first move is silently absent', () => {
+  // The reader starts from an empty board: there is no stone at C7 to take off.
+  const text = renderSgf('(;GM[1]SZ[9]AB[cc][dd]AE[cc]PB[a]PW[b];W[ce])');
+
+  assert.doesNotMatch(text, /Убрано/);
+  assert.match(text, /^Фора: 1 камень — D6$/m);
+});
+
 test('names the placed stones in English too', () => {
   const text = renderSgf('(;GM[1]SZ[9];B[ba];AW[aa];B[ab])', 'en');
 

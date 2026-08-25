@@ -108,6 +108,11 @@ export const en: Locale = {
   placed: (color, placements) =>
     `${stones(placements.length)} of ${SIDE[color].toLowerCase()} placed: ${placements.join(', ')}`,
 
+  // "Taken off the board", never "captured": `move` says captured, and the two
+  // must not be confusable when heard a sentence apart.
+  removed: (color, placements) =>
+    `${stones(placements.length)} of ${SIDE[color].toLowerCase()} taken off the board: ${placements.join(', ')}`,
+
   solution: (count) =>
     count === 0 ? 'The file records no solution.' : `Solution: ${variations(count)}.`,
 

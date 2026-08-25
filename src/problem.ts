@@ -19,7 +19,7 @@ const lineOf = (problem: ParsedProblem, line: ParsedLine, n: number): ProblemLin
   const played = replay({
     size: problem.size,
     meta: {},
-    moves: [{ kind: 'setup', stones: problem.setup }, ...line.moves],
+    moves: [{ kind: 'setup', stones: problem.setup, cleared: [] }, ...line.moves],
   });
 
   return {

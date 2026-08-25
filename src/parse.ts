@@ -1,13 +1,19 @@
 import sgf from '@sabaki/sgf';
 import type { SgfNode } from '@sabaki/sgf';
 import { isSgfError, SgfError } from './errors.ts';
+import { settle } from './position.ts';
 import type { Color, GameMeta, GameResult, SetupStone, Vertex } from './types.ts';
 
 /** A move as the file records it, before the game has been replayed. */
 export type ParsedMove =
   | { kind: 'move'; color: Color; at: Vertex }
   | { kind: 'pass'; color: Color }
-  | { kind: 'setup'; stones: SetupStone[] };
+  /**
+   * `cleared` holds bare vertices rather than stones, because that is all `AE`
+   * says: empty this point. Which stone was standing on it is a question about a
+   * board, and this layer has not built one.
+   */
+  | { kind: 'setup'; stones: SetupStone[]; cleared: Vertex[] };
 
 /** A parsed game: the file's contents, with nothing derived from the rules yet. */
 export type ParsedGame = {
@@ -192,7 +198,10 @@ const parseMeta = (root: SgfNode): GameMeta => ({
   result: parseResult(firstValue(root, 'RE')),
 });
 
-const parseSetup = (node: SgfNode): SetupStone[] => {
+/** What one node does to the board without anybody playing: `AB`, `AW`, `AE`. */
+type Edit = { stones: SetupStone[]; cleared: Vertex[] };
+
+const parseSetup = (node: SgfNode): Edit => {
   const stones: SetupStone[] = [];
 
   for (const [property, color] of [
@@ -207,8 +216,18 @@ const parseSetup = (node: SgfNode): SetupStone[] => {
     }
   }
 
-  return stones;
+  const cleared: Vertex[] = [];
+  for (const value of node.data['AE'] ?? []) {
+    const at = vertexFromSgf(value);
+    if (at !== null) {
+      cleared.push(at);
+    }
+  }
+
+  return { stones, cleared };
 };
+
+const editsBoard = (edit: Edit): boolean => edit.stones.length > 0 || edit.cleared.length > 0;
 
 const parseMove = (node: SgfNode, size: number): PlayedMove | null => {
   for (const color of ['B', 'W'] as const) {
@@ -330,10 +349,10 @@ const expandLines = (
       throw error;
     }
 
-    const added = stated.has(node) ? [] : parseSetup(node);
-    const here = [
+    const edit = stated.has(node) ? undefined : parseSetup(node);
+    const here: ParsedMove[] = [
       ...path,
-      ...(added.length > 0 ? [{ kind: 'setup' as const, stones: added }] : []),
+      ...(edit !== undefined && editsBoard(edit) ? [{ kind: 'setup' as const, ...edit }] : []),
       ...(move === null ? [] : [move]),
     ];
 
@@ -418,7 +437,10 @@ const recordsPlayedGame = (root: SgfNode): boolean =>
  * is full of variations and is still a game.
  */
 const isProblem = (root: SgfNode, stated: SgfNode[]): boolean =>
-  !recordsPlayedGame(root) && stated.flatMap(parseSetup).some((stone) => stone.color === 'W');
+  // The position it settles to, not every stone it ever names: a file that puts a
+  // white stone down and takes it off again states a position without one.
+  !recordsPlayedGame(root) &&
+  settle(stated.map(parseSetup)).some((stone) => stone.color === 'W');
 
 const parseTree = (input: string): SgfNode => {
   if (input.trim() === '') {
@@ -446,9 +468,9 @@ const gameFrom = (root: SgfNode): ParsedGame => {
   const moves: ParsedMove[] = [];
 
   for (const node of mainLine(root)) {
-    const setup = parseSetup(node);
-    if (setup.length > 0) {
-      moves.push({ kind: 'setup', stones: setup });
+    const edit = parseSetup(node);
+    if (editsBoard(edit)) {
+      moves.push({ kind: 'setup', ...edit });
     }
 
     const move = parseMove(node, size);
@@ -473,7 +495,7 @@ const problemFrom = (root: SgfNode, nodes: SgfNode[]): ParsedProblem => {
 
   return {
     size,
-    setup: nodes.flatMap(parseSetup),
+    setup: settle(nodes.map(parseSetup)),
     // Failing that, the colour that moves first in the tree says whose problem
     // it is just as plainly. Failing that too, black moves first.
     toPlay:

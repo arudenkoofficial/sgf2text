@@ -255,6 +255,34 @@ test('stones placed before any move belong to the position, not to a line', () =
   );
 });
 
+/**
+ * `AE` in the opening is not an event. A reader builds the position from an empty
+ * board, so a point set and then cleared is a point with no stone: there is
+ * nothing there for her to take off, and saying so would send her looking for it.
+ */
+test('a stone AE clears before play is simply absent from the position', () => {
+  const problem = problemOf('(;GM[1]SZ[9]AB[cc][dd]AW[cd][dc]PL[W]AE[cc])');
+
+  assert.deepEqual(
+    problem.setup.map((stone) => `${stone.color}${stone.at.x}${stone.at.y}`),
+    ['B33', 'W23', 'W32'],
+  );
+});
+
+test('a stone AE clears during a line is announced where it goes', () => {
+  const problem = problemOf('(;GM[1]SZ[9]AB[cc][dd]AW[cd][dc]PL[W];W[ce];AE[cc];B[de])');
+
+  assert.equal(problem.setup.length, 4, 'the position still holds it');
+
+  const [line] = problem.lines;
+  assert.deepEqual(line?.events.map((event) => event.kind), ['move', 'setup', 'move']);
+
+  const edit = line?.events[1];
+  assert.deepEqual(edit?.kind === 'setup' ? edit.cleared : null, [
+    { color: 'B', at: { x: 2, y: 2 } },
+  ]);
+});
+
 test('a branch that only places a stone is a line of its own', () => {
   // It used to vanish: a node with no move contributed nothing, so the branch had
   // an empty path and was never recorded. Following it as though it were part of

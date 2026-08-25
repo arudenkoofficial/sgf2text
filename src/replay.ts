@@ -1,7 +1,7 @@
 import GoBoard from '@sabaki/go-board';
 import type { Sign, Vertex as BoardVertex } from '@sabaki/go-board';
 import type { ParsedGame } from './parse.ts';
-import type { Color, GameEvent, GameRecord, Vertex } from './types.ts';
+import type { Color, GameEvent, GameRecord, SetupStone, Vertex } from './types.ts';
 
 /**
  * The package is CommonJS with ESM-style declarations, so the default import
@@ -49,7 +49,22 @@ export const replay = (game: ParsedGame): GameRecord => {
         board = board.set(toBoardVertex(stone.at), signOf(stone.color));
       }
 
-      events.push({ kind: 'setup', stones: move.stones });
+      // Read before clearing, because afterwards there is nothing left to name.
+      // `AE` says only "empty this point"; which stone was standing on it is a
+      // question about the board, and this is the only place that holds one.
+      // A point that was empty already is left out: nothing happened there, and
+      // announcing it would send a reader looking for a stone she never had.
+      const cleared: SetupStone[] = [];
+      for (const at of move.cleared) {
+        const sign = board.get(toBoardVertex(at));
+        if (sign !== 0) {
+          cleared.push({ color: sign === 1 ? 'B' : 'W', at });
+        }
+
+        board = board.set(toBoardVertex(at), 0);
+      }
+
+      events.push({ kind: 'setup', stones: move.stones, cleared });
       continue;
     }
 

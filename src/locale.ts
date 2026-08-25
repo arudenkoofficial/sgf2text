@@ -71,6 +71,19 @@ export type Locale = {
   placed(color: Color, stones: string[]): string;
 
   /**
+   * Stones taken off the board by `AE` part-way through, which is the author
+   * editing the position rather than anybody capturing anything.
+   *
+   * The whole burden on this sentence is that it must not be mistaken for a
+   * capture. A capture means somebody's move worked; this means the author moved
+   * the furniture, and a reader who confuses the two draws the wrong lesson from
+   * the problem while her board stays correct — the one failure a tactile board
+   * cannot reveal to her. So the verb is deliberately not the verb `move` uses
+   * for a capture, in either language.
+   */
+  removed(color: Color, stones: string[]): string;
+
+  /**
    * The heading that opens the answer. It states how much of it there is, and it
    * is also what lets a listener stop before hearing the solution — so it has to
    * arrive before any of it.
