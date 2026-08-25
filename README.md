@@ -187,6 +187,9 @@ group. A move with no liberty of its own still captures.
   accessibility tool is worse than a text that takes a while.
 - A branch of a problem holding a move that cannot be read is dropped rather than
   failing the whole file, and the heading says how many lines went with it.
+- Boards larger than 25×25 are refused. SGF allows up to 52; western notation has
+  25 column letters, I being skipped. Refused while reading rather than part-way
+  through writing, so nothing half-converted reaches the output.
 - No reverse conversion (text back to SGF).
 - No Japanese locale yet. The coordinate system is a separate concept, so you can
   add one without reworking the renderer.

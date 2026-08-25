@@ -1,6 +1,7 @@
 import sgf from '@sabaki/sgf';
 import type { SgfNode } from '@sabaki/sgf';
 import { isSgfError, SgfError } from './errors.ts';
+import { MAX_WESTERN_SIZE } from './coords.ts';
 import { settle } from './position.ts';
 import type { Color, GameMeta, GameResult, SetupStone, Vertex } from './types.ts';
 
@@ -127,18 +128,33 @@ const parseSize = (root: SgfNode): number => {
     return DEFAULT_SIZE;
   }
 
+  // `SZ[19:19]` is a square board written the long way. Both spellings converge
+  // here before anything is checked: the square-by-the-long-way branch used to
+  // return early, so `SZ[26:26]` slipped past the limit below — and `SZ[x:x]`
+  // returned NaN as a board size without complaint.
+  let size: number;
   if (raw.includes(':')) {
     const [width, height] = raw.split(':');
     if (width !== height) {
       throw new SgfError('rectangular-board', `Rectangular boards are not supported (SZ[${raw}])`);
     }
 
-    return Number(width);
+    size = Number(width);
+  } else {
+    size = Number(raw);
   }
 
-  const size = Number(raw);
   if (Number.isNaN(size) || size < 2) {
     throw new SgfError('unreadable-size', `Unreadable board size SZ[${raw}]`);
+  }
+
+  // Rejected here rather than left to fail in the formatter, which is where it
+  // used to surface: as a bare English sentence about column numbers, thrown
+  // after the metadata had already been written. SGF allows boards up to 52 and
+  // western notation names 25 of them, so the shortfall is real and belongs in a
+  // sentence the reader's own language can carry.
+  if (size > MAX_WESTERN_SIZE) {
+    throw new SgfError('unsupported-size', `Board size ${size} exceeds ${MAX_WESTERN_SIZE}`);
   }
 
   return size;
@@ -198,10 +214,22 @@ const parseMeta = (root: SgfNode): GameMeta => ({
   result: parseResult(firstValue(root, 'RE')),
 });
 
+/**
+ * A point the board actually has.
+ *
+ * Unchecked, an off-board point does not fail — it is formatted, and comes out as
+ * a coordinate that does not exist. `B[jj]` on a 9×9 board used to be read out as
+ * "K0", a row no board has, with no error and a successful exit. That is the
+ * worst shape a failure can take here: plausible, wrong, and silent, handed to a
+ * reader with no way to see that the board disagrees.
+ */
+const onBoard = (at: Vertex, size: number): boolean =>
+  at.x < size && at.y < size;
+
 /** What one node does to the board without anybody playing: `AB`, `AW`, `AE`. */
 type Edit = { stones: SetupStone[]; cleared: Vertex[] };
 
-const parseSetup = (node: SgfNode): Edit => {
+const parseSetup = (node: SgfNode, size: number): Edit => {
   const stones: SetupStone[] = [];
 
   for (const [property, color] of [
@@ -210,16 +238,24 @@ const parseSetup = (node: SgfNode): Edit => {
   ] as const) {
     for (const value of node.data[property] ?? []) {
       const at = vertexFromSgf(value);
-      if (at !== null) {
-        stones.push({ color, at });
+      if (at === null) {
+        continue;
       }
+      if (!onBoard(at, size)) {
+        throw new SgfError('unreadable-move', `Stone ${property}[${value}] is off the board`);
+      }
+
+      stones.push({ color, at });
     }
   }
 
   const cleared: Vertex[] = [];
   for (const value of node.data['AE'] ?? []) {
     const at = vertexFromSgf(value);
-    if (at !== null) {
+    // An off-board point is quietly ignored here alone, and only because nothing
+    // follows from it: emptying a point the board does not have changes no stone
+    // and produces no sentence.
+    if (at !== null && onBoard(at, size)) {
       cleared.push(at);
     }
   }
@@ -243,7 +279,7 @@ const parseMove = (node: SgfNode, size: number): PlayedMove | null => {
     }
 
     const at = vertexFromSgf(value);
-    if (at === null) {
+    if (at === null || !onBoard(at, size)) {
       throw new SgfError('unreadable-move', `Unreadable move ${color}[${value}]`);
     }
 
@@ -349,7 +385,7 @@ const expandLines = (
       throw error;
     }
 
-    const edit = stated.has(node) ? undefined : parseSetup(node);
+    const edit = stated.has(node) ? undefined : parseSetup(node, size);
     const here: ParsedMove[] = [
       ...path,
       ...(edit !== undefined && editsBoard(edit) ? [{ kind: 'setup' as const, ...edit }] : []),
@@ -436,11 +472,11 @@ const recordsPlayedGame = (root: SgfNode): boolean =>
  * Branching is still not a signal, common as it is in problems: a reviewed game
  * is full of variations and is still a game.
  */
-const isProblem = (root: SgfNode, stated: SgfNode[]): boolean =>
+const isProblem = (root: SgfNode, stated: SgfNode[], size: number): boolean =>
   // The position it settles to, not every stone it ever names: a file that puts a
   // white stone down and takes it off again states a position without one.
   !recordsPlayedGame(root) &&
-  settle(stated.map(parseSetup)).some((stone) => stone.color === 'W');
+  settle(stated.map((node) => parseSetup(node, size))).some((stone) => stone.color === 'W');
 
 const parseTree = (input: string): SgfNode => {
   if (input.trim() === '') {
@@ -468,7 +504,7 @@ const gameFrom = (root: SgfNode): ParsedGame => {
   const moves: ParsedMove[] = [];
 
   for (const node of mainLine(root)) {
-    const edit = parseSetup(node);
+    const edit = parseSetup(node, size);
     if (editsBoard(edit)) {
       moves.push({ kind: 'setup', ...edit });
     }
@@ -495,7 +531,7 @@ const problemFrom = (root: SgfNode, nodes: SgfNode[]): ParsedProblem => {
 
   return {
     size,
-    setup: settle(nodes.map(parseSetup)),
+    setup: settle(nodes.map((node) => parseSetup(node, size))),
     // Failing that, the colour that moves first in the tree says whose problem
     // it is just as plainly. Failing that too, black moves first.
     toPlay:
@@ -518,8 +554,12 @@ export const parseSgf = (input: string): ParsedSgf => {
   // supply the position itself, and computing them twice would leave the one
   // place a problem's setup is read in two places.
   const stated = opening(root);
+  // Read before either branch, so a board the notation cannot name fails the same
+  // way whichever genre the file turns out to be — and so the stones can be
+  // checked against it while they are read.
+  const size = parseSize(root);
 
-  return isProblem(root, stated)
+  return isProblem(root, stated, size)
     ? { kind: 'problem', problem: problemFrom(root, stated) }
     : { kind: 'game', game: gameFrom(root) };
 };

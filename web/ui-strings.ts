@@ -158,6 +158,8 @@ const CATALOGUE = {
       'empty-input': 'The field is empty: paste a game record or a problem, or choose a file.',
       'not-sgf': 'This does not look like an SGF file. Check that the file is the right one.',
       'rectangular-board': 'Rectangular boards are not supported yet.',
+      'unsupported-size':
+        'The board is too large: the coordinates only go up to 25 columns.',
       'unreadable-size': 'The record states a board size that cannot be read.',
       'unreadable-move': 'The record contains a move that could not be read.',
       'unknown-locale': 'That language is not supported.',
@@ -207,6 +209,7 @@ const CATALOGUE = {
       'empty-input': 'Поле пустое: вставьте запись партии или задачу либо выберите файл.',
       'not-sgf': 'Это не похоже на SGF-файл. Проверьте, тот ли файл выбран.',
       'rectangular-board': 'Прямоугольные доски пока не поддерживаются.',
+      'unsupported-size': 'Доска слишком большая: координаты доходят только до 25 столбцов.',
       'unreadable-size': 'В записи указан непонятный размер доски.',
       'unreadable-move': 'В записи есть ход, который не удалось прочитать.',
       'unknown-locale': 'Такой язык не поддерживается.',
