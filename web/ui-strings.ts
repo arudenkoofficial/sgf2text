@@ -32,6 +32,18 @@ export type UiStrings = {
    * was: a screen reader reaches this out of any context that would say what is being
    * saved, and "Save" alone beside a game record is a promise about nothing in
    * particular.
+   *
+   * *Save* rather than *download*, and the verb is not interchangeable here. Nothing is
+   * downloaded: the file is made in her browser out of text already on the page, and the
+   * promise that the record never leaves the browser is the one this page is built to
+   * keep — a control saying "download" contradicts the sentence in its own footer.
+   *
+   * It also has to answer for both branches. The control has one name because the
+   * difference between writing a file and offering a sheet is the browser's business
+   * rather than hers, and "download" named the branch she may never get: pressing
+   * *Скачать* and hearing "handed to the share sheet" describes something other than
+   * what she pressed. *Save* is true of both destinations, which is what one name for
+   * two branches requires.
    */
   save: string;
   /**
@@ -159,7 +171,7 @@ const CATALOGUE = {
       'This converter turns an SGF Go file — a game record or a problem — into text: move by move, with coordinates and captured stones.',
     fileLabel: 'Choose an .sgf file',
     langLabel: 'Page language',
-    save: 'Download the Game or Problem',
+    save: 'Save the Game or Problem',
     appName: 'SGF to text',
     inputHeading: 'Input',
     resultHeading: 'Result',
@@ -207,7 +219,7 @@ const CATALOGUE = {
       'Данный конвертер превращает SGF-файл Го — запись партии или задачу — в текст: ход за ходом, с координатами и снятыми камнями.',
     fileLabel: 'Выберите файл .sgf',
     langLabel: 'Язык страницы',
-    save: 'Скачать партию/задачу',
+    save: 'Сохранить партию/задачу',
     appName: 'SGF в текст',
     inputHeading: 'Ввод',
     resultHeading: 'Результат',
