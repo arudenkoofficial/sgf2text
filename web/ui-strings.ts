@@ -14,26 +14,26 @@ export type UiStrings = {
   title: string;
   description: string;
   ogLocale: string;
-  skipLink: string;
   /**
-   * A line between the name and the tagline: it says what the page makes, where
-   * the name only says what it is called. Kept in this table rather than left in
-   * the HTML, because the HTML is served in one language and this line has to
-   * follow the language control like everything else on the page.
+   * The words the heading carries beside the tool's name, and they are a separate
+   * string for a reason the share control taught this page: the name is drawn, with
+   * an accent mark inside it, so anything that writes over the heading's own text
+   * deletes the mark. This is the tail alone, in an element of its own.
+   *
+   * It opens with its own separator, because how a language joins a name to a phrase
+   * is that language's business rather than the markup's.
    */
-  subtitle: string;
+  nameSuffix: string;
   tagline: string;
-  sgfLabel: string;
   fileLabel: string;
   langLabel: string;
-  convert: string;
-  copy: string;
   /**
-   * Named as a phrase rather than as the bare verb the other buttons use: a screen
-   * reader reaches this out of any context that would say what is being shared, and
-   * "Share" alone beside a game record reads as an offer to share the game.
+   * Named as a phrase rather than as the bare verb, for the reason the share control
+   * was: a screen reader reaches this out of any context that would say what is being
+   * saved, and "Save" alone beside a game record is a promise about nothing in
+   * particular.
    */
-  share: string;
+  save: string;
   /**
    * The name offered for a home screen icon, which is not the document title — that
    * one is a sentence, and iOS truncates an icon label to about a dozen characters.
@@ -55,28 +55,40 @@ export type UiStrings = {
    * them rather than as one string. It was never in this table before, which made
    * it the one paragraph that stayed in whichever language the HTML happened to be
    * written in.
+   *
+   * Still translated although it is hidden from assistive technology: it is on screen,
+   * and a visible paragraph left in a language the page is not in is wrong whoever is
+   * reading it.
    */
   creditsBefore: string;
   creditsBetween: string;
   /**
-   * The disclosure holding the home screen instruction. Collapsed by default: a
-   * reader who listens to the page linearly pays for every permanent paragraph on
-   * every visit, and this text is needed once.
-   */
-  keepSummary: string;
-  /**
-   * Why this is words rather than a button: on iOS, "Add to Home Screen" belongs to
-   * Safari's own share menu and is not reachable from a page's share sheet. The text
-   * says so, because a visitor who cannot find a control assumes she missed it — and
-   * looking for something that does not exist is the more expensive failure.
+   * A file whose text is blank.
    *
-   * Every control it mentions is named as a screen reader announces it. Instructions
-   * written for sighted readers say "the square with an arrow", which tells a blind
-   * visitor neither where the control is nor what she will hear when she reaches it.
+   * Announced before anything is parsed: `convert()` short-circuits on `trim() === ''`,
+   * which is byte for byte the condition the library uses for `empty-input`. That is why
+   * `errors['empty-input']` says the same thing and is unreachable from this page — it
+   * exists because `Record<SgfErrorCode, string>` requires it, not because the page can
+   * reach it. Anyone deleting the "redundant" guard in `convert()`, or merging the two
+   * identical sentences, needs to know which one is load-bearing.
+   *
+   * The old wording told her to paste a record instead, which was an instruction to use a
+   * control that no longer exists.
    */
-  keepInstruction: string;
-  emptyInput: string;
-  fileFailed: string;
+  emptyFile: string;
+  /**
+   * A file the browser could not read at all — one still in the cloud rather than on the
+   * device, or a handle that moved between the picker and the read.
+   *
+   * A function of what is left on screen, because the page is in two different states
+   * afterwards and only one of them is safe to leave unsaid. Nothing examined the new
+   * file, so the previous game's text is deliberately left standing — and where it is,
+   * the save control is live and will write *that* game to her device, under a name
+   * carrying only a timestamp. She cannot see the substitution, the file name does not
+   * carry the game, and the confirmation names the file rather than what is in it. This
+   * sentence is the only place she can be told.
+   */
+  fileFailed: (previousGameStands: boolean) => string;
   parseFailed: string;
   errors: Record<SgfErrorCode, string>;
   done: (moves: number) => string;
@@ -92,18 +104,30 @@ export type UiStrings = {
    * solution" — a count and a denial of the same fact, in that order.
    */
   doneProblem: (variations: number) => string;
-  emptyResult: string;
-  copied: string;
-  copyFailed: string;
-  shared: string;
+  nothingToSave: string;
   /**
-   * Distinct from `copied`, which describes the converted text. Two controls put two
-   * different things on the clipboard, and a visitor cannot look at it to find out
-   * which one she has.
+   * The two ways a file reaches her device, and they are two sentences because they
+   * leave it in two places: one in her downloads, the other wherever she filed it from
+   * the share sheet. She cannot look to find out which happened.
+   *
+   * Both name the file. A file she cannot name is a file she has to hunt for among
+   * everything else in a folder, and the name is the only handle she has on it once
+   * the page is closed.
+   *
+   * The destination leads, and the file name follows it. Both sentences opened with the
+   * name — "The file sgf2text-2026.09.05-14-05.txt has been…" — which a screen reader
+   * spells out at length, so the two announcements were identical for a dozen spoken
+   * tokens and then differed by one verb she had to still be attending for. The fact
+   * that differs goes first, where the two cannot be confused.
+   *
+   * The English pair also both said "to your device", which named neither place. A file
+   * handed to a sheet has not reached the device yet — where it lands is the thing she
+   * is being asked to decide.
    */
-  addressCopied: string;
-  /** The last resort: names the browser's own control, since the page has nothing left to try. */
-  shareFailed: string;
+  savedToDevice: (name: string) => string;
+  handedToSheet: (name: string) => string;
+  /** The last resort: names the text still on the page, since nothing else is left to try. */
+  saveFailed: string;
 };
 
 /**
@@ -130,16 +154,12 @@ const CATALOGUE = {
     description:
       'Converts SGF Go files — game records and problems alike — into plain text a screen reader can speak, with the coordinates of every move and the stones it captures.',
     ogLocale: 'en_US',
-    skipLink: 'Skip to the Converter',
-    subtitle: 'Game records and problems, written out as text',
+    nameSuffix: ' — a converter for blind players',
     tagline:
-      'Turns an SGF Go file — a game record or a problem — into text a screen reader can read out: move by move, with coordinates and captured stones.',
-    sgfLabel: 'Paste an SGF game record or problem',
-    fileLabel: 'Or choose an .sgf file',
+      'This converter turns an SGF Go file — a game record or a problem — into text: move by move, with coordinates and captured stones.',
+    fileLabel: 'Choose an .sgf file',
     langLabel: 'Page language',
-    convert: 'Convert',
-    copy: 'Copy the Text',
-    share: 'Share the Page',
+    save: 'Download the Game or Problem',
     appName: 'SGF to text',
     inputHeading: 'Input',
     resultHeading: 'Result',
@@ -148,14 +168,14 @@ const CATALOGUE = {
     creditsBefore: 'The idea and the shape of the output come from ',
     creditsBetween:
       ', by the Japan Go Association for the Visually Impaired. Source code: ',
-    keepSummary: 'Keep this page on your home screen',
-    keepInstruction:
-      'Open your browser’s Share control and choose “Add to Home Screen”. In Safari on iPhone that control is in the toolbar at the bottom of the screen, and VoiceOver announces it as “Share”. This page cannot do it for you: adding an icon is the browser’s own action, and a page is not allowed to perform it.',
-    emptyInput: 'The field is empty: paste a game record or a problem, or choose a file.',
-    fileFailed: 'The file could not be read.',
+    emptyFile: 'This file holds no game record and no problem.',
+    fileFailed: (previousGameStands: boolean): string =>
+      previousGameStands
+        ? 'The file could not be read. The text on the page is still the game before it.'
+        : 'The file could not be read.',
     parseFailed: 'The file could not be parsed.',
     errors: {
-      'empty-input': 'The field is empty: paste a game record or a problem, or choose a file.',
+      'empty-input': 'This file holds no game record and no problem.',
       'not-sgf': 'This does not look like an SGF file. Check that the file is the right one.',
       'rectangular-board': 'Rectangular boards are not supported yet.',
       'unsupported-size':
@@ -169,12 +189,12 @@ const CATALOGUE = {
       variations === 0
         ? 'Done. This is a problem, and the file records no solution.'
         : `Done. This is a problem. Lines in the solution: ${variations}.`,
-    emptyResult: 'There is nothing to copy yet: convert a file first.',
-    copied: 'The text has been copied to the clipboard.',
-    copyFailed: 'Copying failed. Select the result text and copy it manually.',
-    shared: 'The page has been shared.',
-    addressCopied: 'The address of this page has been copied to the clipboard.',
-    shareFailed: 'Sharing failed. Use your browser’s own Share control instead.',
+    nothingToSave: 'There is nothing to save yet: choose a file first.',
+    savedToDevice: (name: string) => `Saved to your downloads: the file ${name}.`,
+    handedToSheet: (name: string) =>
+      `Handed to the share sheet: the file ${name}. Choose where to keep it.`,
+    saveFailed:
+      'The file could not be saved. The text is still on the page: select it there and copy it by hand.',
   },
   ru: {
     htmlLang: 'ru',
@@ -182,16 +202,12 @@ const CATALOGUE = {
     description:
       'Преобразует SGF-файлы Го — и записи партий, и задачи — в текст, который читает скринридер: координаты каждого хода и снятые им камни.',
     ogLocale: 'ru_RU',
-    skipLink: 'Перейти к конвертеру',
-    subtitle: 'Партии и задачи — текстом',
+    nameSuffix: ' — конвертер для незрячих игроков',
     tagline:
-      'Превращает SGF-файл Го — запись партии или задачу — в текст, который читает скринридер: ход за ходом, с координатами и снятыми камнями.',
-    sgfLabel: 'Вставьте SGF: запись партии или задачу',
-    fileLabel: 'Или выберите файл .sgf',
+      'Данный конвертер превращает SGF-файл Го — запись партии или задачу — в текст: ход за ходом, с координатами и снятыми камнями.',
+    fileLabel: 'Выберите файл .sgf',
     langLabel: 'Язык страницы',
-    convert: 'Преобразовать',
-    copy: 'Скопировать текст',
-    share: 'Поделиться страницей',
+    save: 'Скачать партию/задачу',
     appName: 'SGF в текст',
     inputHeading: 'Ввод',
     resultHeading: 'Результат',
@@ -199,14 +215,14 @@ const CATALOGUE = {
     privacy: 'Файл обрабатывается прямо в браузере и никуда не отправляется.',
     creditsBefore: 'Идея и структура вывода — ',
     creditsBetween: ', Японская ассоциация Го для незрячих. Исходный код: ',
-    keepSummary: 'Сохранить страницу на домашний экран',
-    keepInstruction:
-      'Откройте в браузере элемент «Поделиться» и выберите «На экран „Домой“». В Safari на iPhone этот элемент находится на панели инструментов внизу экрана, VoiceOver называет его «Поделиться». Сама страница этого сделать не может: добавление значка — действие браузера, странице оно недоступно.',
-    emptyInput: 'Поле пустое: вставьте запись партии или задачу либо выберите файл.',
-    fileFailed: 'Не удалось прочитать файл.',
+    emptyFile: 'В этом файле нет ни записи партии, ни задачи.',
+    fileFailed: (previousGameStands: boolean): string =>
+      previousGameStands
+        ? 'Не удалось прочитать файл. На странице по-прежнему текст предыдущей партии.'
+        : 'Не удалось прочитать файл.',
     parseFailed: 'Не удалось разобрать файл.',
     errors: {
-      'empty-input': 'Поле пустое: вставьте запись партии или задачу либо выберите файл.',
+      'empty-input': 'В этом файле нет ни записи партии, ни задачи.',
       'not-sgf': 'Это не похоже на SGF-файл. Проверьте, тот ли файл выбран.',
       'rectangular-board': 'Прямоугольные доски пока не поддерживаются.',
       'unsupported-size': 'Доска слишком большая: координаты доходят только до 25 столбцов.',
@@ -219,13 +235,12 @@ const CATALOGUE = {
       variations === 0
         ? 'Готово. Это задача, решения в файле нет.'
         : `Готово. Это задача. Вариантов в решении: ${variations}.`,
-    emptyResult: 'Копировать пока нечего: сначала преобразуйте файл.',
-    copied: 'Текст скопирован в буфер обмена.',
-    copyFailed: 'Не удалось скопировать. Выделите текст результата и скопируйте вручную.',
-    shared: 'Страница отправлена.',
-    addressCopied: 'Адрес страницы скопирован в буфер обмена.',
-    shareFailed:
-      'Не удалось поделиться. Воспользуйтесь элементом «Поделиться» в самом браузере.',
+    nothingToSave: 'Скачивать пока нечего: сначала выберите файл.',
+    savedToDevice: (name: string) => `Сохранено в загрузки: файл ${name}.`,
+    handedToSheet: (name: string) =>
+      `Передано в меню «Поделиться»: файл ${name}. Выберите, куда сохранить.`,
+    saveFailed:
+      'Не удалось сохранить файл. Текст остался на странице: выделите его и скопируйте вручную.',
   },
 } satisfies { [L in LocaleId]: UiStrings & { htmlLang: L } };
 

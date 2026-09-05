@@ -6,6 +6,7 @@ import {
   summarise,
   destinationFor,
   fieldInvalidity,
+  reconvertsOnLanguageChange,
   staleRegions,
   survivesRestatement,
 } from '../web/announcement.ts';
@@ -18,51 +19,69 @@ const fixture = (name: string): string =>
 
 /**
  * A message on this page carries two facts: how it is drawn, and what it is about. From
- * that pair follow three decisions — where the message is said, whether the game field
- * is reported as invalid, and how long the message stays true — and all three used to
- * live inside the DOM shell where no test could reach them. They are here instead, for
- * the same reason `share.ts` is: `main.ts` is the one module a `node --test` run cannot
- * import.
+ * that pair follow three decisions — where the message is said, whether the control that
+ * took the file is reported as invalid, and how long the message stays true — and all
+ * three used to live inside the DOM shell where no test could reach them. They are here
+ * instead, for the same reason `save.ts` is: `main.ts` is the one module a `node --test`
+ * run cannot import.
  *
  * Each of the three has now been got wrong in production at least once, which is the
  * argument for this file existing rather than a theory about it. Where a message is said
  * was a choice made by hand at every call site, so three messages shipped in the wrong
  * region and not one of them failed a test.
  */
-test('only a message about the record becomes the record’s description', () => {
+test('only a message about the game the page was given becomes the control’s description', () => {
   assert.equal(destinationFor('record'), 'field');
 
-  for (const subject of ['result', 'file', 'page'] as const) {
-    assert.equal(
-      destinationFor(subject),
-      'notice',
-      `a message about the ${subject} is an event, said beside the control that caused it`,
-    );
-  }
+  assert.equal(
+    destinationFor('result'),
+    'notice',
+    'a message about the converted text is an event, said beside the control that caused it',
+  );
 });
 
-test('a file that could not be read does not accuse the record', () => {
-  // The last of the three, and the one left standing when the others were moved: a
-  // file that failed to load has a plausible claim on the field, since the field is
-  // where its contents were going. But nothing read the record — it may be a perfectly
-  // good game she pasted an hour ago — and marking it invalid tells her it is wrong on
-  // the evidence of a file. That is the mistake the requirement names.
-  assert.equal(destinationFor('file'), 'notice');
-  assert.equal(fieldInvalidity({ tone: 'error', where: destinationFor('file') }), null);
+test('a file that could not be read is a verdict on the control that took it', () => {
+  // This changed with the field it used to reason about. While the page held a textarea,
+  // a failed read was a notice: the record in the field might be a perfectly good game
+  // she pasted an hour ago, and nothing about the file had examined it — so marking it
+  // invalid told her the game she was holding was wrong on the evidence of a file.
+  //
+  // There is no such record now. The chosen file is the only game the page has, so a
+  // file it could not read is a verdict on the only thing there is — and choosing
+  // another file, in that control, is the one thing she can do about it, which is
+  // exactly when focus should follow the message.
+  assert.equal(destinationFor('file'), 'field');
+  assert.equal(fieldInvalidity({ tone: 'error', where: destinationFor('file') }), 'true');
 });
 
-test('every subject has somewhere to be said', () => {
-  // A new subject added to the union without a destination would fall through to
-  // `undefined` here rather than to a sensible default, and a region of `undefined` is
-  // a message nobody reads.
-  const subjects: readonly Subject[] = ['record', 'result', 'file', 'page'];
+/**
+ * The exhaustiveness check, and it has to be a type-level one.
+ *
+ * This test used to loop over the three subjects asserting each landed in `'field'` or
+ * `'notice'`, which is the return type — so the assertion could not fail, whatever
+ * `destinationFor` did. Worse, the list was typed `readonly Subject[]`, so widening the
+ * union still compiled and the test still passed: it was checking nothing about the one
+ * thing it was written to check.
+ *
+ * `Exhaustive` fails to compile the moment `Subject` gains a member, and the root
+ * `tsconfig.json` includes `test`, so `npm run typecheck` is where this one is read.
+ * `destinationFor` itself is now a total `Record`, which makes the same mistake a
+ * compile error in `announcement.ts` too — this is the second lock rather than the only
+ * one.
+ */
+type Exhaustive = Subject extends 'record' | 'result' | 'file' ? true : never;
+const subjectsAreExactlyThese: Exhaustive = true;
 
-  for (const subject of subjects) {
-    assert.ok(
-      destinationFor(subject) === 'field' || destinationFor(subject) === 'notice',
-      `${subject} names a real region`,
-    );
-  }
+test('every subject is mapped to a region by name rather than by a default', () => {
+  assert.ok(subjectsAreExactlyThese);
+
+  // Stated one at a time on purpose. A loop asserting "each lands somewhere" is what
+  // this test used to be, and a fall-through default satisfies that while sending a
+  // subject nobody has thought about to the field — where an error marks her file
+  // invalid and takes her focus.
+  assert.equal(destinationFor('record'), 'field');
+  assert.equal(destinationFor('result'), 'notice');
+  assert.equal(destinationFor('file'), 'field');
 });
 
 test('a failure about the record marks the field invalid', () => {
@@ -76,16 +95,16 @@ test('a success about the record clears the mark', () => {
 });
 
 test('a failure read out in the notice leaves a standing mark alone', () => {
-  // The regression this exists to prevent: a share that could not happen used to
-  // write `aria-invalid="false"` over a record that had failed to parse and was
-  // still sitting in the field. The field then reported itself valid to a screen
-  // reader while holding a record the page had already rejected.
+  // The regression this exists to prevent: an action that could not happen used to
+  // write `aria-invalid="false"` over a file that had failed to parse and was still
+  // the last one chosen. The control then reported itself valid to a screen reader
+  // while holding a verdict the page had already reached.
   assert.equal(fieldInvalidity({ tone: 'error', where: 'notice' }), null);
 });
 
 test('a success read out in the notice leaves a standing mark alone', () => {
-  // Same in the other direction: the address reaching the clipboard says nothing
-  // about the record in the field, so it must not vouch for it either.
+  // Same in the other direction: a file reaching her device says nothing about
+  // whether the last file she chose could be read, so it must not vouch for it either.
   assert.equal(fieldInvalidity({ tone: 'info', where: 'notice' }), null);
 });
 
@@ -98,69 +117,73 @@ test('only a mark of invalidity is a reason to move focus', () => {
   const moves = (tone: Tone, where: Destination): boolean =>
     fieldInvalidity({ tone, where }) === 'true';
 
-  assert.equal(moves('error', 'field'), true, 'her record is what needs correcting');
+  assert.equal(moves('error', 'field'), true, 'the file she chose is what needs replacing');
   assert.equal(
     moves('error', 'notice'),
     false,
-    'the share failed; the field is not where she is needed',
+    'saving failed; the file control is not where she is needed',
   );
   assert.equal(moves('info', 'field'), false, 'success never takes focus');
   assert.equal(moves('info', 'notice'), false);
 });
 
 /**
- * Where a message is drawn, once the page offers the same action in more than one
- * place. Two share controls at opposite ends of a page cannot share one region: the
- * reader at high magnification sees only the part of the page she is in, so a
- * confirmation drawn at the other end is a confirmation never drawn.
+ * Where a message is drawn. The page currently has one region for events, beside the
+ * one control that produces them, and this rule is what the next one will rely on: two
+ * controls at opposite ends of a page cannot share a region, because the reader at high
+ * magnification sees only the part of the page she is in, so a confirmation drawn at
+ * the other end is a confirmation never drawn.
+ *
+ * Tested with a second notice the page does not currently have, on purpose. The rule
+ * held for two share controls, it has to hold for whatever arrives next, and a fixture
+ * with one notice in it could not tell whether it still does.
  */
 const field = { kind: 'field' as Destination, name: 'status' };
-const formNotice = { kind: 'notice' as Destination, name: 'notice' };
-const mastheadNotice = { kind: 'notice' as Destination, name: 'notice-top' };
-const footerNotice = { kind: 'notice' as Destination, name: 'notice-bottom' };
-const all = [field, formNotice, mastheadNotice, footerNotice];
+const saveNotice = { kind: 'notice' as Destination, name: 'notice' };
+const elsewhere = { kind: 'notice' as Destination, name: 'notice-elsewhere' };
+const all = [field, saveNotice, elsewhere];
 
 test('a notice clears the other notices', () => {
   // One event has just happened, so one sentence describes the present. The others
   // stopped being true and would still be found by anyone reading the page in order.
-  const stale = staleRegions(all, footerNotice);
+  const stale = staleRegions(all, elsewhere);
 
   assert.deepEqual(
     stale.map((region) => region.name).sort(),
-    ['notice', 'notice-top'],
+    ['notice'],
     'every other notice is emptied',
   );
 });
 
 test('a notice never clears the field’s description', () => {
-  // The defect this exists to prevent, and it shipped: sharing the page emptied the
-  // sentence explaining why a record could not be parsed, while leaving the field
+  // The defect this exists to prevent, and it shipped: an action on the page emptied
+  // the sentence explaining why a record could not be parsed, while leaving the control
   // marked invalid. A screen reader then announced a problem with nothing to say what
   // it was.
-  for (const speaking of [formNotice, mastheadNotice, footerNotice]) {
+  for (const speaking of [saveNotice, elsewhere]) {
     assert.ok(
       !staleRegions(all, speaking).includes(field),
-      `speaking in ${speaking.name} leaves the record’s own message standing`,
+      `speaking in ${speaking.name} leaves the file’s own message standing`,
     );
   }
 });
 
 test('the field’s description is replaced, never cleared', () => {
-  // It is state rather than an event: it holds until the field's condition changes,
-  // which is what makes it safe to read out every time she reaches the field.
+  // It is state rather than an event: it holds until the control's condition changes,
+  // which is what makes it safe to read out every time she reaches the control.
   assert.ok(
     !staleRegions(all, field).includes(field),
     'the region being spoken into is not also emptied',
   );
 });
 
-test('a message about the record supersedes a standing notice', () => {
-  // A conversion is newer news than "the address was copied", so the older sentence
+test('a message about the game supersedes a standing notice', () => {
+  // A conversion is newer news than "the file has been saved", so the older sentence
   // goes rather than the two of them standing side by side as if both had just
   // happened.
   assert.deepEqual(
     staleRegions(all, field).map((region) => region.name).sort(),
-    ['notice', 'notice-bottom', 'notice-top'],
+    ['notice', 'notice-elsewhere'],
   );
 });
 
@@ -183,11 +206,12 @@ test('one message at a time, and it is the one just announced', () => {
  * It comes up when the language changes: the standing message is restated so that a
  * failure is not left in a language she does not read. Restating a *confirmation* reports
  * an event that is not happening, and the page did exactly that — change the language
- * after copying and it announced the copy again.
+ * after taking the text away and it announced that again.
  */
 test('a failure survives being restated, wherever it is said', () => {
-  // The condition it describes still holds: the record is still broken, the clipboard
-  // still refused. She is owed the reason in the language she is now reading.
+  // The condition it describes still holds: the file is still the one that would not
+  // convert, saving still refused. She is owed the reason in the language she is now
+  // reading.
   assert.equal(survivesRestatement({ tone: 'error', where: 'field' }), true);
   assert.equal(survivesRestatement({ tone: 'error', where: 'notice' }), true);
 });
@@ -201,9 +225,53 @@ test('the field’s own messages always survive', () => {
 
 test('a finished confirmation in a notice does not survive', () => {
   // The only combination that describes an event rather than a condition, and the one
-  // that shipped wrong: "the address of this page has been copied" restated on a
-  // language change is a copy that did not happen.
+  // that shipped wrong: "the file has been saved" restated on a language change is a
+  // save that did not happen.
   assert.equal(survivesRestatement({ tone: 'info', where: 'notice' }), false);
+});
+
+/**
+ * Whether a change of language re-converts the game the page is holding.
+ *
+ * This lived in the language control's handler as `if (result.textContent !== '')`, and
+ * it was wrong in a way no test could see — which is the argument for every decision in
+ * this file, arriving once more.
+ *
+ * The guard was reasoned about against a file that failed to *parse*, where the result is
+ * emptied and there is nothing to re-convert. The case it was never checked against is a
+ * file that could not be *read*: nothing examined it, so the previous game's text is
+ * deliberately left standing while the file control carries a verdict about the new file.
+ * A result on the page then meant "re-convert", the page announced a success about the
+ * previous game into the field region, and that overwrote the verdict and marked the
+ * control valid — so the page vouched for the file it had just said it could not read.
+ */
+test('a game on the page is re-converted when the language changes', () => {
+  assert.equal(reconvertsOnLanguageChange({ hasResult: true, fileIsMarkedInvalid: false }), true);
+});
+
+test('nothing is re-converted when the page holds no result', () => {
+  // A file that failed to parse: the result was emptied, and the standing failure is
+  // restated by the page rather than re-derived by converting again.
+  assert.equal(reconvertsOnLanguageChange({ hasResult: false, fileIsMarkedInvalid: true }), false);
+});
+
+test('a standing verdict on the file outweighs a result still on the page', () => {
+  // The defect this predicate exists for. Re-converting here would announce the previous
+  // game as a success, wipe the sentence explaining the verdict, and set the mark to
+  // `'false'` — the page vouching for a file it could not read.
+  assert.equal(reconvertsOnLanguageChange({ hasResult: true, fileIsMarkedInvalid: true }), false);
+});
+
+test('the verdict is read from the control rather than from the last thing said', () => {
+  // Read from the mark, not from the standing announcement, and the distinction is the
+  // one `forgetTheVerdict` records: the last thing the page *said* may be about the save
+  // she just pressed, while the verdict on her file is a state that outlives it. Asking
+  // the announcement would report no verdict to respect.
+  //
+  // Expressed here as the property that matters: the mark alone decides, whatever else
+  // the page has been saying.
+  assert.equal(reconvertsOnLanguageChange({ hasResult: true, fileIsMarkedInvalid: true }), false);
+  assert.equal(reconvertsOnLanguageChange({ hasResult: true, fileIsMarkedInvalid: false }), true);
 });
 
 /**
