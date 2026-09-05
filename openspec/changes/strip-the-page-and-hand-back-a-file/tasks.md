@@ -232,19 +232,25 @@ what closing each one cost.
       asserted the return type, and its typed array accepted a widened union. Replaced by a
       type-level check plus the total mapping in 8.8, both verified to break the build.
 
-### Left for a decision
+### The three that were decisions rather than defects
 
-- [ ] 8.18 The save control is named "Download the Game or Problem" / «Скачать
-      партию/задачу», which names one of its two branches. When the sheet branch fires, a
-      button saying *download* answers a sentence saying the file was handed over. One
-      name is what the spec asks for; whether it should be the download one is a wording
-      call.
-- [ ] 8.19 `saveFailed` is restated on every change of language, since `survivesRestatement`
-      treats any error as a condition still in force. It describes a finished attempt
-      rather than a standing condition, unlike a parse failure. Worth settling either way.
-- [ ] 8.20 `<footer>` remains a `contentinfo` landmark with both its paragraphs
-      `aria-hidden`, so a reader cycling landmarks still lands on it and finds nothing.
-      Moving the attribute to the `<footer>` itself would empty the landmark too.
+- [x] 8.18 The save control was named "Download the Game or Problem" / «Скачать
+      партию/задачу», which named one of its two branches: pressing *Скачать* and hearing
+      that the file was handed to a sheet describes something other than what she pressed.
+      Renamed to *Save* / *Сохранить*, which is true of both destinations — and *download*
+      was wrong on its own terms, since nothing is downloaded: the file is made in her
+      browser out of text already on the page, which is the promise the footer makes.
+- [x] 8.19 `saveFailed` is restated on every change of language, and stays that way. The
+      argument for dropping it is that it reports a finished attempt; the argument for
+      keeping it is that the text is still unsaved, which is a condition in force at the
+      moment she switches. Dropping it is also silent — a cleared polite region announces
+      nothing — so she would lose her only indication that the file was never written.
+      Recorded here so the rule is not re-litigated from the symptom.
+- [x] 8.20 The footer element remained a `contentinfo` landmark with both its paragraphs
+      `aria-hidden`, so a reader cycling landmarks arrived at an empty stop. The attribute
+      is on the landmark now, and stays on both paragraphs as the statement of intent at
+      each level. Pinned by a test — whose first draft read the word out of the prose above
+      the element and failed against a correct document.
 
 ## 9. Simplification, after the review
 

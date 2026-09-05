@@ -278,6 +278,20 @@ test('the footer stays on the page and out of the accessibility tree', () => {
     assert.match(paragraph[0], /aria-hidden="true"/, `#${id} is not read out`);
   }
 
+  // The landmark itself, not only what is inside it. A footer element outside an article
+  // or a section is `contentinfo`, so hiding the two paragraphs alone left a reader
+  // cycling landmarks arriving at an empty stop — the cost this requirement exists to
+  // remove, in the one list meant to be a shortcut.
+  //
+  // Matched with the trailing `>` required and no `<` inside, so a mention of the tag in
+  // a comment cannot stand in for the tag. The first draft of this assertion read the
+  // word out of the prose above the element and failed against a document that was
+  // correct.
+  const footer = /<footer(\s[^<>]*)?>/.exec(html);
+
+  assert.ok(footer !== null, 'the footer is still in the document');
+  assert.match(footer[0], /aria-hidden="true"/, 'the contentinfo landmark is not offered');
+
   const credits = /<p id="credits"[\s\S]*?<\/p>/.exec(html);
 
   assert.ok(credits !== null);

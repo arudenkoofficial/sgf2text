@@ -644,7 +644,7 @@
             -->
             <div class="save">
               <button type="button" id="save" aria-disabled="true">
-                Download the Game or Problem
+                Save the Game or Problem
               </button>
               <p id="notice" role="status"></p>
             </div>
@@ -652,7 +652,21 @@
         </section>
       </main>
 
-      <footer>
+      <!--
+        Hidden at the landmark rather than only at the paragraphs inside it.
+
+        A footer element outside an article or a section is a `contentinfo` landmark, and
+        hiding its two paragraphs left the landmark itself in the tree: a reader cycling
+        landmarks still arrived here and found nothing to read. An empty stop is the cost
+        this requirement exists to remove, arriving in the one list that is meant to be
+        a shortcut.
+
+        The attribute stays on both paragraphs as well. It is redundant while it is here,
+        and it is what the intent is written as at each level — main.ts rebuilds the
+        credits paragraph on every change of language, so the page states what it means
+        in the place a future edit would look.
+      -->
+      <footer aria-hidden="true">
         <!--
           On the page and out of the accessibility tree.
 
