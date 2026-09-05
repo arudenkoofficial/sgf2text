@@ -114,6 +114,14 @@ The page is live at <https://sgf.rudenko.live/>. To hand someone the Russian
 version, send them <https://sgf.rudenko.live/?lang=ru>: it opens in Russian for
 them whatever they last chose.
 
+Choosing a `.sgf` file converts it. There is no field to paste into and no button
+to press afterwards: a game arrives as a file, and choosing it is the action. The
+converted text can be saved to your device as a `.txt` named with the date and
+time of the save, so one download cannot quietly replace another. Where a browser
+will not write a file from a link — an older Safari — the same control hands the
+file to the system share sheet instead, and the page says which of the two
+happened rather than leaving you to guess where the file went.
+
 GitHub Pages serves the document in English, and the page's own script rewrites
 it into the chosen language. That language comes from an ordered chain, stopping
 at the first source that names one it supports:

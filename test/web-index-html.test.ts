@@ -26,13 +26,22 @@ const flat = collapse(html);
 
 const attribute = (pattern: RegExp): string | null => pattern.exec(html)?.[1] ?? null;
 
-const metaByName = (name: string): string | null =>
-  attribute(new RegExp(`<meta\\s+name="${name}"\\s+content="([^"]*)"`, 's')) ??
-  attribute(new RegExp(`<meta\\s+name="${name}"\\s*\\n\\s*content="([^"]*)"`, 's'));
+/**
+ * A meta tag's content, whether the tag names itself with `name` or with `property`.
+ *
+ * One pattern covers both the tags written on one line and the ones wrapped across
+ * three, because a newline and the indent under it are whitespace and `\s+` already
+ * spans them. Each of these used to try a second pattern behind a `??` that spelled the
+ * newline out; that pattern matched a strict subset of the first, so it could only ever
+ * run after the first had returned null — which is exactly when it had nothing to find
+ * either.
+ */
+const metaContent = (named: 'name' | 'property', value: string): string | null =>
+  attribute(new RegExp(`<meta\\s+${named}="${value}"\\s+content="([^"]*)"`, 's'));
 
-const metaByProperty = (property: string): string | null =>
-  attribute(new RegExp(`<meta\\s+property="${property}"\\s+content="([^"]*)"`, 's')) ??
-  attribute(new RegExp(`<meta\\s+property="${property}"\\s*\\n\\s*content="([^"]*)"`, 's'));
+const metaByName = (name: string): string | null => metaContent('name', name);
+
+const metaByProperty = (property: string): string | null => metaContent('property', property);
 
 test('the document declares the language it is served in', () => {
   assert.equal(attribute(/<html lang="([^"]+)"/), DEFAULT_LANGUAGE);
@@ -123,12 +132,11 @@ test('the served document holds no wording from the other language', () => {
     for (const key of [
       'title',
       'description',
+      'nameSuffix',
       'tagline',
-      'convert',
+      'fileLabel',
+      'save',
       'privacy',
-      'share',
-      'keepSummary',
-      'keepInstruction',
     ] as const) {
       assert.ok(
         !flat.includes(collapse(other[key])),
@@ -140,16 +148,12 @@ test('the served document holds no wording from the other language', () => {
 
 test('the visible strings are the served language’s', () => {
   for (const key of [
-    'skipLink',
+    'nameSuffix',
     'tagline',
-    'sgfLabel',
     'fileLabel',
     'langLabel',
-    'convert',
-    'copy',
-    'share',
-    'keepSummary',
-    'keepInstruction',
+    'save',
+    'inputHeading',
     'resultHeading',
     'placeholder',
     'privacy',
@@ -201,114 +205,126 @@ test('the icons and the manifest are asked of this origin', () => {
   }
 });
 
-const shareControls = (): string[] =>
-  [...html.matchAll(/<button[^>]*id="share-[^"]*"[^>]*>[\s\S]*?<\/button>/g)].map(
-    (match) => match[0],
-  );
-
-test('sharing is offered twice, and named once', () => {
-  // Two places because neither the visitor at the top of the page nor the one who has
-  // read to the bottom should have to travel to the other end. One name because they
-  // do the same thing, and two names would promise a difference that does not exist.
-  const controls = shareControls();
-
-  assert.equal(controls.length, 2, 'one in the masthead, one in the footer');
-
-  for (const control of controls) {
-    assert.ok(
-      collapse(control).includes(collapse(served.share)),
-      'each carries its own accessible name as text, in the served language',
-    );
-    assert.doesNotMatch(
-      control,
-      /aria-disabled/,
-      'unlike Copy, sharing is never in a state with nothing to act on',
-    );
-  }
-});
-
-test('sharing is not offered among the conversion controls', () => {
-  // Where it was, and why it was missed: everything else in that row acts on the game
-  // record, so a third button there read as a third thing done to the game.
-  const actions = /<div class="actions">([\s\S]*?)<\/div>/.exec(html);
-
-  assert.ok(actions !== null, 'the form has an actions row');
-
-  const row = actions[1] ?? '';
-  const buttons = [...row.matchAll(/<button[^>]*id="([^"]+)"/g)].map((match) => match[1]);
-
-  assert.deepEqual(buttons, ['convert', 'copy'], 'the game’s controls, and only those');
-});
-
-test('each share control stands in a page-level department', () => {
-  for (const [department, control] of [
-    ['header', 'share-top'],
-    ['footer', 'share-bottom'],
+test('the controls this page no longer has are gone from the document', () => {
+  // Every one of these was a permanent stop she passed on the way to the two things
+  // she came for. Removed from the page and left in the document, each would still be
+  // a stop — and one the script no longer wires to anything.
+  for (const [what, pattern] of [
+    ['the paste field', /id="sgf"/],
+    ['the convert control', /id="convert"/],
+    ['the copy control', /id="copy"/],
+    ['the share control in the masthead', /id="share-top"/],
+    ['the share control in the footer', /id="share-bottom"/],
+    ['the home screen disclosure', /<details/],
+    ['the skip link', /skip-link/],
+    ['the form, which had nothing left to submit', /<form/],
   ] as const) {
-    const block = new RegExp(`<${department}[\\s\\S]*?</${department}>`).exec(html);
+    assert.doesNotMatch(html, pattern, `${what} is gone from the served document`);
+  }
+});
 
-    assert.ok(block !== null, `the document has a ${department}`);
+test('the save control is served, named, and disabled until there is something to save', () => {
+  const control = /<button[^>]*id="save"[^>]*>([\s\S]*?)<\/button>/.exec(html);
+
+  assert.ok(control !== null, 'the page ships a save control');
+  assert.match(
+    control[0],
+    /aria-disabled="true"/,
+    'aria-disabled rather than disabled: a disabled button leaves the tab order, and a control she never reaches is a control she never learns exists',
+  );
+  assert.equal(
+    collapse(control[1] ?? '').trim(),
+    collapse(served.save),
+    'named as text in the served language, not by a label or a glyph',
+  );
+  assert.doesNotMatch(control[0], /aria-label/, 'the name comes from the text');
+});
+
+/**
+ * The page's departments, each as its own slice of the document, so an assertion about
+ * where something sits can be made against the department it has to sit in rather than
+ * against the whole page.
+ */
+const departments = [...html.matchAll(/<section class="row"[\s\S]*?<\/section>/g)].map(
+  (match) => match[0],
+);
+
+test('the save control stands under the result, with its answer beside it', () => {
+  // The text it saves is the text above it, and the answer to a press belongs where
+  // the press happened: a reader at high magnification sees only the part of the page
+  // she is in.
+  assert.equal(departments.length, 2, 'the page has its two departments');
+
+  const result = departments.find((department) => department.includes('id="result"'));
+
+  assert.ok(result !== undefined, 'one of them holds the result');
+  assert.match(result, /id="save"/, 'the save control is in it');
+  assert.match(result, /id="notice"/, 'and so is the region that answers it');
+
+  const group = /<div class="save">([\s\S]*?)<\/div>/.exec(result);
+
+  assert.ok(group !== null, 'the control and its answer are grouped');
+  assert.match(group[1] ?? '', /id="save"/);
+  assert.match(group[1] ?? '', /id="notice"/);
+});
+
+test('the footer stays on the page and out of the accessibility tree', () => {
+  // The credit and the promise are still published, and no longer read out on every
+  // visit. Both halves matter: hidden and deleted are not the same thing.
+  for (const id of ['privacy', 'credits'] as const) {
+    const paragraph = new RegExp(`<p id="${id}"[^>]*>`).exec(html);
+
+    assert.ok(paragraph !== null, `#${id} is still in the document`);
+    assert.match(paragraph[0], /aria-hidden="true"/, `#${id} is not read out`);
+  }
+
+  const credits = /<p id="credits"[\s\S]*?<\/p>/.exec(html);
+
+  assert.ok(credits !== null);
+
+  const anchors = [...credits[0].matchAll(/<a\s[^>]*>/g)].map((match) => match[0]);
+
+  assert.equal(anchors.length, 2, 'the credit names its source and this page’s own');
+
+  for (const anchor of anchors) {
     assert.match(
-      block[0],
-      new RegExp(`id="${control}"`),
-      `${control} is where the page’s own actions are`,
+      anchor,
+      /tabindex="-1"/,
+      'a link hidden from a screen reader must not stay a tab stop: reaching a control it cannot name announces nothing at all',
     );
   }
 });
 
-test('the mark beside each name is decorative', () => {
-  // It is there to catch a sighted eye. To a screen reader it is nothing, and it is
-  // never what names the control — the text is.
-  const controls = shareControls();
+test('the heading carries its translated tail beside the drawn name', () => {
+  const heading = /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(html);
 
-  assert.equal(controls.length, 2, 'both controls are checked, so neither loop runs empty');
+  assert.ok(heading !== null, 'the page has its heading');
 
-  for (const control of controls) {
-    const svg = /<svg[^>]*>/.exec(control);
+  const inside = heading[1] ?? '';
 
-    assert.ok(svg !== null, 'the control carries a mark');
-    assert.match(svg[0], /aria-hidden="true"/, 'hidden from assistive technology');
-    assert.match(svg[0], /focusable="false"/, 'and not a tab stop of its own');
-    assert.doesNotMatch(control, /aria-label/, 'the name comes from the text, not from a label');
+  assert.match(inside, /<span class="mark">2<\/span>/, 'the accent mark is still drawn in the name');
 
-    // The label is its own element so that translating it cannot reach the mark. Write
-    // to the button's text instead and the glyph is deleted the first time the language
-    // changes — which is a failure nobody would see in English.
-    const label = /<span class="label">([\s\S]*?)<\/span>/.exec(control);
+  // `</span\s*>` rather than `</span>`: HTML allows whitespace before the closing
+  // bracket of an end tag, and the tail is written with the bracket hanging on its own
+  // line so that no space creeps in between the name and the phrase beside it.
+  const tail = /<span id="name-suffix">([\s\S]*?)<\/span\s*>/.exec(inside);
 
-    assert.ok(label !== null, 'the label is an element of its own, not the button’s text');
-    assert.equal(collapse(label[1] ?? '').trim(), collapse(served.share));
-  }
+  assert.ok(
+    tail !== null,
+    'the tail is an element of its own, so translating it cannot delete the mark beside it',
+  );
+  assert.equal(collapse(tail[1] ?? ''), collapse(served.nameSuffix));
 });
 
-test('the home screen instruction is a native disclosure', () => {
-  const details = /<details[^>]*>([\s\S]*?)<\/details>/.exec(html);
+test('the file control is described by its own messages and no others', () => {
+  // `#status` is what a screen reader reads out every time she reaches the control, so
+  // it may hold only what the game she was given is about. A message about the result
+  // or the saved file gets the other region: one of them left in the description would
+  // introduce the control she picks a file with by talking about a file she saved
+  // minutes ago.
+  const described = attribute(/id="file"[\s\S]*?aria-describedby="([^"]*)"/);
 
-  assert.ok(details !== null, 'the instruction is in a details element');
-
-  const body = details[1] ?? '';
-  const summary = /<summary[^>]*>([\s\S]*?)<\/summary>/.exec(body);
-
-  assert.ok(summary !== null, 'with a summary, so it is operable without script');
-  assert.ok(
-    collapse(summary[1] ?? '').includes(collapse(served.keepSummary)),
-    'the summary is the served language’s wording',
-  );
-  assert.ok(
-    collapse(body).includes(collapse(served.keepInstruction)),
-    'and the instruction itself is served, not left for the script to supply',
-  );
-});
-
-test('the field is described by its own messages and no others', () => {
-  // `#status` is what a screen reader reads out every time she reaches the field, so
-  // it may hold only what the field is about. The messages about the result, the
-  // clipboard and the address get their own region: one of them left in the
-  // description would introduce her game record with a sentence about the clipboard,
-  // long after the copying.
-  const described = attribute(/id="sgf"[\s\S]*?aria-describedby="([^"]*)"/);
-
-  assert.equal(described, 'status', 'exactly one region, and it is the field’s own');
+  assert.equal(described, 'status', 'exactly one region, and it is the control’s own');
 
   const regions = [...html.matchAll(/<p id="([^"]+)" role="status"><\/p>/g)].map(
     (match) => match[1],
@@ -316,53 +332,28 @@ test('the field is described by its own messages and no others', () => {
 
   assert.deepEqual(
     regions,
-    ['notice-top', 'status', 'notice', 'notice-bottom'],
-    'a region for the field, and one beside each control that speaks',
+    ['status', 'notice'],
+    'the condition of the file the page was given, and the answer to the one control that speaks',
   );
 });
 
-test('every share control has its own region beside it', () => {
-  // One region cannot be beside two controls at opposite ends of a page, and a reader
-  // at high magnification sees only the part of the page she is in — so a confirmation
-  // drawn at the other end is one she never sees.
-  const groups = [...html.matchAll(/<div class="share">([\s\S]*?)<\/div>/g)].map(
-    (match) => match[1] ?? '',
+test('each region sits in the department whose messages it carries', () => {
+  // The requirement about a message staying with the field it describes is for the
+  // reader at high magnification, for whom a message at the other end of the page is a
+  // message never seen. The input department describes the file; the result department
+  // answers the save control.
+  const input = departments.find((department) => department.includes('id="file"'));
+  const result = departments.find((department) => department.includes('id="result"'));
+
+  assert.ok(input !== undefined && result !== undefined, 'both departments are found');
+
+  assert.match(input, /id="status"/, 'the file’s own description is beside the file control');
+  assert.doesNotMatch(
+    input,
+    /id="notice"/,
+    'and nothing in the input department answers a press any more, so no region waits there for one',
   );
-
-  assert.equal(groups.length, 2, 'each control is grouped with its own answer');
-
-  for (const [control, own] of [
-    ['share-top', 'notice-top'],
-    ['share-bottom', 'notice-bottom'],
-  ] as const) {
-    const group = groups.find((candidate) => candidate.includes(`id="${control}"`));
-
-    assert.ok(group !== undefined, `${control} is in a group of its own`);
-    assert.match(group, new RegExp(`id="${own}"`), `and ${own} is the region in that group`);
-    assert.doesNotMatch(
-      group,
-      /role="status"[\s\S]*role="status"/,
-      'one region per control, so an answer cannot be drawn twice',
-    );
-  }
-});
-
-test('both regions sit with the controls that produce their messages', () => {
-  // The requirement about a message staying with the field it describes is about the
-  // reader at high magnification, for whom a message at the other end of the page is
-  // a message never seen. Splitting the association must not move either one out of
-  // the department holding the buttons.
-  const form = /<form id="form"[^>]*>([\s\S]*?)<\/form>/.exec(html);
-
-  assert.ok(form !== null, 'the controls live in the form');
-
-  for (const region of ['status', 'notice']) {
-    assert.match(
-      form[1] ?? '',
-      new RegExp(`id="${region}"`),
-      `#${region} is beside the buttons, not at the other end of the page`,
-    );
-  }
+  assert.match(result, /id="notice"/, 'the save control’s answer is beside the save control');
 });
 
 test('the language control opens on the served language', () => {
@@ -370,4 +361,113 @@ test('the language control opens on the served language', () => {
 
   assert.deepEqual(options, [...SUPPORTED_LANGUAGES]);
   assert.equal(options[0], DEFAULT_LANGUAGE, 'no script has run yet, so the first option shows');
+});
+
+/**
+ * Everything `main.ts` reaches for, checked against the document that has to hold it.
+ *
+ * `need` throws on a missing selector by design, and `applyVisible` runs it fourteen
+ * times before it reaches the save control's label. So a renamed id does not degrade the
+ * page — it aborts the first `applyLanguage()` at the foot of the module, and the
+ * language control silently does nothing for the rest of the visit, for every visitor,
+ * with the served English still on screen.
+ *
+ * Six of those ids were asserted nowhere before this test. Renaming `#tagline`,
+ * `#lang`, `#input-heading` and the rest passed the whole suite. Read out of `main.ts`
+ * rather than listed here, so the check cannot fall behind the code it is checking.
+ */
+const SELECTORS = [...readFileSync(fileURLToPath(new URL('../web/main.ts', import.meta.url)), 'utf8')
+  .matchAll(/need(?:<[^>]*>)?\(\s*'([^']+)'/g)]
+  .map((match) => match[1] ?? '');
+
+const resolves = (selector: string): boolean => {
+  const id = /^#([\w-]+)$/.exec(selector);
+  if (id !== null) {
+    return new RegExp(`id="${id[1]}"`).test(html);
+  }
+
+  // Named for the shape it matches rather than `attribute`, which is the module's own
+  // helper a few lines up and a different kind of thing entirely.
+  const attributeSelector = /^(\w+)\[(\w[\w-]*)="([^"]+)"\]$/.exec(selector);
+  if (attributeSelector !== null) {
+    return new RegExp(
+      `<${attributeSelector[1]}\\b[^>]*${attributeSelector[2]}="${attributeSelector[3]}"`,
+    ).test(flat);
+  }
+
+  throw new Error(`This test does not know how to resolve ${selector}`);
+};
+
+test('every element the page reaches for is in the document it is served with', () => {
+  assert.ok(SELECTORS.length > 10, 'the selectors were actually read out of main.ts');
+
+  for (const selector of SELECTORS) {
+    assert.ok(resolves(selector), `${selector} is missing from the served document`);
+  }
+});
+
+test('the two older controls are named by a label that points at them', () => {
+  // The save control's name is asserted elsewhere; these two were not. Deleting `for`
+  // from either label left the control with no accessible name at all — a file button
+  // announced as nothing, on the page the converter now exists around — and failed
+  // nothing. The strings themselves being present somewhere in the document is a
+  // different fact from a label that names this control.
+  const labels: readonly (readonly [string, string])[] = [
+    ['file', served.fileLabel],
+    ['lang', served.langLabel],
+  ];
+
+  for (const [id, name] of labels) {
+    const label = new RegExp(`<label for="${id}"[^>]*>([^<]+)</label>`).exec(flat);
+
+    assert.ok(label !== null, `#${id} is named by a label pointing at it`);
+    assert.equal(label[1]?.trim(), name, `#${id}'s label reads the served language's name`);
+  }
+});
+
+test('the page is four stops long, and they are the four the change left', () => {
+  // The blocklist of removed ids catches a resurrection under the old name and nothing
+  // else: a textarea called something new, or a second share button, passed it. The
+  // stop count is what this change is actually about, so it is asserted as the page's
+  // own property rather than as a list of things that must not come back.
+  const focusable = [...flat.matchAll(/<(a|button|input|select|textarea)\b([^>]*)>/g)];
+  const inTheOrder = focusable.filter(([, , attributes]) => !/tabindex="-1"/.test(attributes ?? ''));
+
+  const stops = inTheOrder.map(([, , attributes]) => /id="([^"]+)"/.exec(attributes ?? '')?.[1]);
+
+  assert.deepEqual(
+    stops,
+    ['lang', 'file', 'save'],
+    'every control in the tab order is one of the three, in the order she meets them',
+  );
+
+  // The fourth is the result itself, which is not a control and earns its stop another
+  // way — see the test below.
+  assert.doesNotMatch(flat, /<textarea/, 'there is nowhere to paste, under any name');
+});
+
+test('the result keeps the tab stop and the translation guard the change gave it', () => {
+  const pre = /<pre id="result"([^>]*)>/.exec(flat)?.[1] ?? '';
+
+  // Copying was removed on the strength of this attribute: `saveFailed` tells her the
+  // text is still on the page and to select it there by hand, and a browser with neither
+  // save branch has nothing else left to offer. An accessibility sweep deletes a
+  // focusable `<pre>` on sight, so it is pinned here.
+  assert.match(pre, /tabindex="0"/, 'the result is reachable by keyboard');
+
+  // A coordinate put through a machine translator names a point that was not played.
+  // This requirement moved from the textarea to the result with this change; nothing
+  // moved with it until now.
+  assert.match(pre, /translate="no"/, 'no translator rewrites the coordinates');
+});
+
+test('nothing interrupts her when she leaves', () => {
+  // The guard protected text that existed nowhere else. The record now comes from a file
+  // she still holds and the result can be saved, so the interruption defends nothing —
+  // and a confirmation dialogue is an especially bad thing to leave standing for someone
+  // who navigates by keyboard and sound. Asserted at text level because `main.ts` is the
+  // one module `node --test` cannot import.
+  const main = readFileSync(fileURLToPath(new URL('../web/main.ts', import.meta.url)), 'utf8');
+
+  assert.doesNotMatch(main, /beforeunload/, 'the page asks the browser to confirm nothing');
 });
