@@ -5,32 +5,32 @@ TBD - created by archiving change add-sgf-text-converter. Update Purpose after a
 ## Requirements
 ### Requirement: Converting on the page
 
-The web page SHALL let a visitor convert an SGF game either by pasting its text or
-by choosing a `.sgf` file, and SHALL show the converted text on the same page.
+The web page SHALL take an SGF game as a `.sgf` file and SHALL show the converted
+text on the same page. Choosing the file SHALL be what converts it: there is no
+second control to press, and no way in but a file.
 
-#### Scenario: Pasted game
+A game arrives as a file. A field to paste into cost a stop in the tab order, a label
+and a placeholder read out as SGF punctuation, for a way in that was never used by the
+visitor this page exists for.
 
-- **WHEN** a visitor pastes SGF into the input and activates the convert control
-- **THEN** the converted text appears in the result area of the same page
-
-#### Scenario: Uploaded file
+#### Scenario: Chosen file
 
 - **WHEN** a visitor chooses a `.sgf` file through the file control
-- **THEN** its contents are converted and shown, without the visitor having to open
-  the file themselves
+- **THEN** its contents are converted and the text appears in the result area of the
+  same page, without the visitor having to open the file or press anything else
 
-#### Scenario: Multi-line input
+#### Scenario: No way in but a file
 
-- **WHEN** the pasted game spans many lines
-- **THEN** the input accepts it in full, because the input is a textarea rather than
-  a single-line field
+- **WHEN** a visitor reaches the department that takes the game
+- **THEN** the file control is the only thing there that takes one: the page offers no
+  field to paste a record into and no control that converts what a field holds
 
 ### Requirement: Screen reader accessibility
 
 Every control on the page SHALL be reachable and operable by keyboard and SHALL
 carry an accessible name. The page SHALL announce a result without moving focus,
-and SHALL move focus to the input when a conversion fails, so that the visitor is
-placed in the control they have to act in.
+and SHALL move focus to the file control when a conversion fails, so that the visitor
+is placed in the control they have to act in.
 
 The asymmetry is deliberate, and it is what the code has always done. A success is
 something to be told about; a failure is something to act on, and leaving focus
@@ -47,8 +47,8 @@ from assistive technology rather than read out.
 #### Scenario: Failure announced, and focus follows it
 
 - **WHEN** a conversion fails
-- **THEN** the message is announced, the input is marked invalid, and focus moves
-  to the input
+- **THEN** the message is announced, the file control is marked invalid, and focus
+  moves to that control, which is where choosing another file happens
 
 #### Scenario: A standing message re-read in a new language
 
@@ -60,8 +60,9 @@ from assistive technology rather than read out.
 #### Scenario: Keyboard-only operation
 
 - **WHEN** a visitor navigates the page using only the keyboard
-- **THEN** every control — input, file chooser, language switcher, convert, copy —
-  can be reached and activated, and each is announced with its purpose
+- **THEN** every control — the file chooser, the language switcher, save — can be
+  reached and activated, each is announced with its purpose, and the result can be
+  reached so that its text can be selected
 
 #### Scenario: Decoration is not read out
 
@@ -77,14 +78,7 @@ from assistive technology rather than read out.
 ### Requirement: Where the keyboard is stays visible
 
 Every element that can hold focus SHALL show where the focus is when the focus was
-asked for by keyboard, including elements that exist only as a destination for the
-skip link.
-
-#### Scenario: Arriving by skip link
-
-- **WHEN** a visitor activates the skip link from the keyboard
-- **THEN** the destination shows a focus ring, so a sighted keyboard user can see
-  where they have arrived
+asked for by keyboard.
 
 #### Scenario: A ring that does not dissolve into the thing it marks
 
@@ -92,12 +86,13 @@ skip link.
 - **THEN** the ring remains distinguishable, being separated from the fill rather
   than drawn against it
 
-#### Scenario: A pointer does not raise a ring
+#### Scenario: Every stop on the page shows itself
 
-- **WHEN** a visitor clicks into a region that is focusable only as a skip-link
-  destination
-- **THEN** no focus ring is drawn, since nobody asked to be shown where the
-  keyboard is
+- **WHEN** a visitor moves through the page by keyboard from the first stop to the
+  last
+- **THEN** each stop draws a focus ring, including the result area, which holds focus
+  so that the text can be read from the keyboard and selected there when saving is not
+  available
 
 ### Requirement: The page is legible in either colour scheme
 
@@ -124,11 +119,11 @@ the input began, for the readers this converter exists for.
 - **THEN** the colour it is given is the background the page actually paints in
   that scheme
 
-#### Scenario: A field's edge is visible
+#### Scenario: The file control's edge is visible
 
-- **WHEN** a partially sighted visitor looks for where to paste a game
-- **THEN** the border of the input clears 3:1 against the page and against its own
-  fill, so the field is found by looking rather than by guessing
+- **WHEN** a partially sighted visitor looks for the control that takes the game
+- **THEN** the border of the file control clears 3:1 against the page and against its
+  own fill, so the control is found by looking rather than by guessing
 
 #### Scenario: An error does not speak in the site's own colour
 
@@ -139,24 +134,42 @@ the input began, for the readers this converter exists for.
 ### Requirement: Error reporting
 
 The page SHALL explain failures in the visitor's chosen language and SHALL leave the
-input intact so it can be corrected.
+result area empty rather than showing text from a file it could not read through.
 
-#### Scenario: Empty input
+#### Scenario: A file with no game in it
 
-- **WHEN** the visitor converts with an empty input
-- **THEN** the page states that the input is empty and nothing else changes
+- **WHEN** the chosen file holds no game record
+- **THEN** the page says so, in words that describe a file rather than telling her to
+  paste something into a field the page no longer has
 
 #### Scenario: Invalid SGF
 
-- **WHEN** the input cannot be parsed
-- **THEN** the page states what is wrong with the file and keeps the input text as
-  the visitor typed it
+- **WHEN** the chosen file cannot be parsed
+- **THEN** the page states what is wrong with it and the result area stays empty
+
+#### Scenario: A file that cannot be read
+
+- **WHEN** the file cannot be read at all
+- **THEN** the page says so, marks the file control invalid and moves focus to it,
+  since choosing another file is the only thing left to do and that control is where
+  it happens
+
+#### Scenario: The game she is still holding is named
+
+- **WHEN** a file cannot be read while a previously converted game is still on the page
+- **THEN** the message says that the text on the page is the game before it, because
+  nothing examined the new file and the previous result is deliberately left standing —
+  and the save control is live over it, so pressing save would write that game to her
+  device under a name carrying only a timestamp, which she has no way to notice
+- **AND WHEN** no game was on the page
+- **THEN** the message says only that the file could not be read, since there is nothing
+  for her to mistake it for
 
 ### Requirement: A message stays with the field it describes
 
-A message about the input SHALL be rendered next to that input, in the same section
-of the page, so that it is visible to a reader who can see only part of the page at
-a time.
+A message about the game the page has been given SHALL be rendered next to the control
+that took it, in the same section of the page, so that it is visible to a reader who
+can see only part of the page at a time.
 
 Assistive technology is already served by association and by focus. This requirement
 is for the visitor reading at high magnification, for whom proximity is not a
@@ -166,8 +179,8 @@ nicety but the only way the message is seen at all.
 
 - **WHEN** a conversion fails while the page is magnified enough that the result
   area is off screen
-- **THEN** the message is still in view, because it sits beside the field and the
-  buttons that produced it
+- **THEN** the message is still in view, because it sits beside the file control that
+  produced it
 
 ### Requirement: Language switching
 
@@ -197,7 +210,26 @@ English would pass even if the source it names were never read at all.
 
 - **WHEN** a visitor converts a game and then selects another language
 - **THEN** the result is re-rendered in that language without the visitor having to
-  paste the game again
+  choose the file again, because the page keeps the text of the file it read
+
+#### Scenario: A standing verdict outranks the game still on screen
+
+- **WHEN** a file that could not be read leaves the previous game on the page, and the
+  language is then changed
+- **THEN** the game is not re-converted, because re-converting would announce the
+  previous game as a success into the file control's own description — overwriting the
+  sentence explaining the verdict and reporting the control valid, so the page would
+  vouch for the file it has just said it could not read
+- **AND** the standing failure is restated in the new language, which is the whole of
+  what the change of language owes her here
+
+#### Scenario: Two standing sentences both follow the language
+
+- **WHEN** a verdict stands on the file control and a notice stands beside the save
+  control, and the language is changed
+- **THEN** both are restated in the new language, because the page can hold two true
+  sentences at once and one left behind is read out with the wrong language's phonemes —
+  and the one at risk is the file control's own description
 
 #### Scenario: A link outranks a remembered choice
 
@@ -238,24 +270,136 @@ English would pass even if the source it names were never read at all.
 - **THEN** the page is shown in English, which is the language the document was
   already served in, so nothing on the page changes after load
 
-### Requirement: Copying the result
+#### Scenario: A failed file is restated, not re-read
 
-The page SHALL let the visitor copy the converted text and SHALL confirm that the
-copy happened. Every copy SHALL be confirmed, including one that repeats the copy
-before it: the confirmation belongs to the action, not to the sentence.
+- **WHEN** a file has failed to convert and the visitor then changes the language
+- **THEN** the reason is stated again in the new language and the page does not
+  convert anything, so focus stays in the language control she is operating
 
-#### Scenario: Copy confirmed
+### Requirement: Saving the converted text as a file
 
-- **WHEN** the visitor activates the copy control
-- **THEN** the plain text of the result is placed on the clipboard, with line breaks
-  preserved, and the live region announces that it was copied
+The page SHALL let the visitor save the converted text to her device as a plain-text
+file, and SHALL do so on the browser in her hand rather than only where a link is
+allowed to write one. Where the browser honours a download from a link, the file SHALL
+be written. Where it does not, the same control SHALL hand the file to the system
+share sheet, so that the text still reaches her device through the one route that
+browser offers.
 
-#### Scenario: Copying twice is confirmed twice
+Which branch is possible SHALL be decided when the control is pressed, with the file
+already built: a capability can be granted between one press and the next, and whether
+a file can be handed to a sheet is a question about that particular file.
 
-- **WHEN** the visitor activates the copy control a second time without converting
+The control SHALL be present whenever the page is, SHALL be marked disabled while
+there is nothing to save, and SHALL NOT be removed from the tab order — a control that
+appears only once it can be used is a control she cannot discover before she needs it,
+and one taken out of the tab order is a control she never learns exists. It SHALL
+carry one name, because it does one thing, and the difference between its two branches
+is the browser's rather than hers.
+
+The file name SHALL carry the date and the time of the save, in her own local time,
+so that one save does not silently replace another and so that she can tell two of
+them apart by name. It SHALL contain no character a file system forbids: a name the
+browser has to rewrite before writing it is a name she was promised and did not get.
+
+Every press SHALL be answered in a polite live region beside the control. A
+confirmation SHALL name the file and SHALL say which of the two things happened: a
+file written to her downloads and a file handed to a sheet end up in different places,
+and she cannot look to find out which.
+
+A sheet she closes, and a sheet the browser refuses because one is already open, SHALL
+NOT be announced as failures. The first is a decision she made; the second has no
+outcome yet, and reporting one would report something that has not happened. Where
+neither branch is available, or a branch fails, the page SHALL say so and SHALL name
+the result on the page as the way to take the text manually — which is why the result
+keeps its place in the tab order.
+
+Saving SHALL happen entirely in the browser. The text reaches her device without any
+request carrying it anywhere, under the same promise the rest of the page makes.
+
+Nothing SHALL interrupt her when she leaves the page or reloads it. The record came
+from a file she still holds and the converted text can be saved, so there is no
+unsaved work left for a confirmation dialog to defend.
+
+#### Scenario: The text is written to her device
+
+- **WHEN** the visitor activates the save control with a conversion on the page, in a
+  browser that honours a download from a link
+- **THEN** a plain-text file holding exactly the result text is written to her device,
+  its name carrying the date and the time of the save, and the live region beside the
+  control names the file and says it was saved
+
+#### Scenario: Handed to the sheet where a link cannot save
+
+- **WHEN** the visitor activates the save control in a browser that does not honour a
+  download from a link
+- **THEN** the file is handed to the system share sheet instead, and the live region
+  names the file and says it was handed over rather than claiming it was saved
+
+#### Scenario: A name a file system accepts
+
+- **WHEN** the name of the file is built
+- **THEN** it holds no colon and no other character forbidden by Windows or
+  historically illegal in the Finder, so what lands on her device is the name she was
+  told about rather than one the browser silently repaired
+
+#### Scenario: Her clock, not a server's
+
+- **WHEN** the file is named
+- **THEN** the date and the time in the name are the ones her own device reads, since
+  the name exists for her to recognise
+
+#### Scenario: Nothing to save yet
+
+- **WHEN** the visitor activates the save control before anything has been converted
+- **THEN** the page says there is nothing to save, and does not mark the file control
+  invalid or move her into it: what is missing is a conversion, not a correction
+
+#### Scenario: Discoverable before it is needed
+
+- **WHEN** a visitor moves through the page by keyboard before converting anything
+- **THEN** she reaches the save control and hears that it exists, because it is marked
+  disabled rather than removed from the page or from the tab order
+
+#### Scenario: Saving twice is answered twice
+
+- **WHEN** the visitor saves the text and then saves it again without converting
   anything in between
-- **THEN** the text is placed on the clipboard again and the live region announces it
-  again, because a confirmation she does not hear is a copy she cannot know happened
+- **THEN** both saves happen and both are announced, because the second one happened
+  just as much as the first
+
+#### Scenario: A sheet she closes is not a failure
+
+- **WHEN** the file is handed to the share sheet and the visitor closes it without
+  choosing a destination
+- **THEN** nothing is announced as a failure, because backing out on purpose is not an
+  error and reporting one would tell her something went wrong when nothing did
+
+#### Scenario: A sheet already standing
+
+- **WHEN** the save control is pressed while a sheet from an earlier press is still
+  open and unanswered
+- **THEN** nothing is announced, because the outcome she is waiting for has not
+  happened yet; and a sheet whose outcome never arrives SHALL NOT leave the control
+  unable to try again
+
+#### Scenario: Neither branch, and nothing hidden
+
+- **WHEN** the browser will neither write the file from a link nor take it into a
+  sheet, or the attempt fails
+- **THEN** the live region says the text could not be saved and names the result on
+  the page as the way to take it manually, rather than the control failing silently
+
+#### Scenario: Leaving is not interrupted
+
+- **WHEN** the visitor reloads the page or navigates away after converting a game
+- **THEN** nothing asks her to confirm, because the game came from a file she still
+  has and the text was hers to save
+
+#### Scenario: The text is not sent anywhere
+
+- **WHEN** the file is saved
+- **THEN** the page issues no network request carrying the converted text, so saving
+  keeps the promise the conversion already makes
 
 ### Requirement: Conversion stays in the browser
 
@@ -294,35 +438,19 @@ every reader of the page.
 
 ### Requirement: Rendering the result safely
 
-The page SHALL insert converted text as text content only.
+The page SHALL insert converted text as text content only, and SHALL mark the result
+as text that must not be machine translated.
 
 #### Scenario: Game containing markup-like characters
 
 - **WHEN** a player name or comment contains characters such as `<`, `>` or `&`
 - **THEN** they appear literally in the result and are never interpreted as markup
 
-### Requirement: A pasted record is code, and unsaved
-
-A game record in the input SHALL be marked as text that must not be machine
-translated, and the page SHALL warn before discarding one that has not been dealt
-with.
-
-#### Scenario: An automatic translator leaves the record alone
+#### Scenario: An automatic translator leaves the game alone
 
 - **WHEN** a browser or extension translates the page
-- **THEN** the pasted record is left exactly as it is, since translating SGF
-  produces something that no longer parses
-
-#### Scenario: Leaving with a record still in the field
-
-- **WHEN** a visitor reloads or navigates away while the input holds a game record
-- **THEN** the browser asks them to confirm, because the record was pasted or read
-  from a file and this page stores nothing
-
-#### Scenario: Leaving with nothing in the field
-
-- **WHEN** a visitor leaves the page with an empty input
-- **THEN** nothing interrupts them
+- **THEN** the converted text is left exactly as it is, because a coordinate put
+  through a translator names a point that is not the one that was played
 
 ### Requirement: Page metadata in the chosen language
 
@@ -388,16 +516,17 @@ the language changes without reloading the page.
 ### Requirement: The language control describes the page
 
 The control SHALL be presented as choosing the language of the page rather than of
-a conversion, and SHALL sit outside the form that takes the game. It SHALL remain a
-native select whose options are each named in their own language and marked with
-that language, so its name is read in the voice of the language it names.
+a conversion, and SHALL sit outside the department that takes the game. It SHALL
+remain a native select whose options are each named in their own language and marked
+with that language, so its name is read in the voice of the language it names.
 
-#### Scenario: Not a field of the form
+#### Scenario: Not one of the controls that takes a game
 
 - **WHEN** a visitor reaches the control
-- **THEN** it is outside the form holding the game input, because it rewrites the
-  title, the description, the link-preview metadata and every label on the page —
-  placing it among the game fields would describe it as a per-conversion setting
+- **THEN** it is outside the department holding the file control, because it rewrites
+  the title, the description, the link-preview metadata and every label on the page —
+  placing it among the controls that take a game would describe it as a
+  per-conversion setting
 
 #### Scenario: The current language is named, not pictured
 
@@ -416,13 +545,22 @@ that language, so its name is read in the voice of the language it names.
 ### Requirement: Every visible string follows the language
 
 The page SHALL translate all of its own text, with no paragraph left in whichever
-language the served document happens to be written in.
+language the served document happens to be written in. Text hidden from assistive
+technology but still on screen SHALL be translated too: it is read by whoever is
+looking at the page, and being unread by a screen reader is not the same as being
+absent.
 
 #### Scenario: A paragraph containing links
 
 - **WHEN** the language changes and a paragraph holds links inside its sentence
 - **THEN** the words around the links are translated too, and the paragraph is
   rebuilt from text and link nodes rather than from a string treated as markup
+
+#### Scenario: The heading's own words follow the language
+
+- **WHEN** the language changes
+- **THEN** the words the heading carries beside the tool's name are translated, and
+  the name itself and the mark drawn inside it are left intact
 
 ### Requirement: The address carries the language it is showing
 
@@ -570,118 +708,6 @@ and a cookie that was never there.
 - **THEN** the parameter survives to the destination, so the language a sender
   chose is the language the recipient sees
 
-### Requirement: Sharing the page
-
-The page SHALL offer, in the masthead and again in the footer, a control that hands
-the page's own address to the operating system's share sheet, and SHALL pass the
-address in the language currently being read, so that the recipient opens the version
-the sender was looking at.
-
-Both controls SHALL carry the same accessible name, because they perform the same
-action and two names would promise a difference that does not exist. Neither SHALL be
-placed among the controls that convert a game: the page's own actions belong with the
-page's own actions, which is where the language control and the home screen
-instruction already are.
-
-Where the browser offers no share sheet, the control SHALL copy the address to the
-clipboard instead. It SHALL announce which of the two happened, in a polite live
-region beside the control that was pressed, and SHALL NOT move focus: sharing
-succeeded, and there is nothing for the visitor to act on.
-
-The control exists because handing this tool to the next blind player is something
-the players do for each other, and a browser's own share control has to be hunted
-for. A named button in the page is reachable by the same means as everything else
-here.
-
-A share the browser refuses because one is already outstanding SHALL NOT be announced
-as a failure and SHALL NOT fall through to the clipboard: the outcome she is waiting
-for has not happened, and overwriting what she was holding is a loss she did not ask
-for. Whether a share is outstanding SHALL be answered by the browser rather than
-remembered by the page, and no share SHALL leave either control unable to try again.
-
-The page's own memory of an open sheet agrees with the browser's answer for as long as
-outcomes arrive. Where they part is where it matters: a share whose outcome never
-arrives leaves that memory shut for the rest of the visit, and both controls then
-answer every press with nothing at all. Silence is the one outcome a blind visitor
-cannot detect — a control that has gone permanently mute is indistinguishable, to her,
-from one she failed to activate.
-
-Each control MAY carry a mark beside its name. Such a mark SHALL be hidden from
-assistive technology and SHALL NOT be the only thing naming the control, since a
-glyph names nothing to a visitor who cannot see it.
-
-Only the page's address is transmitted. The game in the input is not part of what is
-shared, under any branch of this requirement.
-
-#### Scenario: Shared through the system sheet
-
-- **WHEN** a visitor activates either share control in a browser that offers a share
-  sheet
-- **THEN** the sheet opens carrying the page's address and a title naming the page,
-  both in the language being read, and the live region says the page was offered for
-  sharing
-
-#### Scenario: The sheet is dismissed
-
-- **WHEN** a visitor opens the share sheet and then closes it without choosing a
-  destination
-- **THEN** nothing is announced as a failure, because cancelling is not an error and
-  reporting one would tell a blind visitor something went wrong when nothing did
-
-#### Scenario: No share sheet in this browser
-
-- **WHEN** a visitor activates either control in a browser without the share sheet
-- **THEN** the address is copied to the clipboard and the live region says it was
-  copied, rather than the control doing nothing or reporting a browser limitation
-  the visitor cannot act on
-
-#### Scenario: Neither sharing nor copying is possible
-
-- **WHEN** the share sheet is unavailable and writing to the clipboard also fails
-- **THEN** the live region says the address could not be shared or copied and names
-  the browser's own share control as the way to do it, so the visitor is left with
-  an instruction rather than with a control that failed silently
-
-#### Scenario: The shared address carries the language
-
-- **WHEN** a visitor reading the page in Russian shares it
-- **THEN** the address handed to the sheet is the one naming Russian, so the
-  recipient is not shown whichever language their own cookie happens to hold
-
-#### Scenario: The game is not shared
-
-- **WHEN** a visitor shares the page with a game record in the input
-- **THEN** what leaves the browser is the page's address and nothing else, because
-  the record is unpublished work and the page's promise about it holds here too
-
-#### Scenario: The outcome is announced where the visitor is
-
-- **WHEN** a visitor activates the share control in the footer
-- **THEN** the outcome is announced in the region belonging to that control, not in
-  one at the other end of the page, because a reader at high magnification sees only
-  the part of the page she is in
-
-#### Scenario: Sharing is not offered among the conversion controls
-
-- **WHEN** a visitor reaches the buttons that convert and copy a game
-- **THEN** sharing the page is not one of them, so nothing there suggests that the
-  game is what would be shared
-
-#### Scenario: A second press while the sheet still stands
-
-- **WHEN** a visitor opens the share sheet from one control and activates the other
-  control while that sheet is still open
-- **THEN** nothing is announced and the clipboard is left untouched, because the share
-  she started may still succeed and reporting an outcome now would report one that has
-  not happened
-
-#### Scenario: A share whose outcome never arrives
-
-- **WHEN** a share is started and the browser never reports how it ended
-- **THEN** a later press still reaches the browser and is answered on its own merits,
-  rather than both controls going permanently silent on the strength of the page's own
-  record of a sheet it can no longer see
-
 ### Requirement: The page can be kept as an icon
 
 The page SHALL ship a web app manifest, an `apple-touch-icon` and a favicon, all
@@ -696,10 +722,9 @@ which is what the screen reader then reads out on the home screen.
 
 The icon SHALL open the page in the browser rather than as a standalone window.
 What was asked for is an icon that opens this page, not an application: opening it
-without the browser's own frame takes away the share control this page's own
-instruction tells her to find, along with everything else she reaches a web page
-with — the reader, the text size control, the way back. A page that removed those
-would be trading her tools for the appearance of an app.
+without the browser's own frame takes away everything she reaches a web page with —
+the reader, the text size control, the share control, the way back. A page that
+removed those would be trading her tools for the appearance of an app.
 
 #### Scenario: The icon is named, not addressed
 
@@ -722,8 +747,8 @@ would be trading her tools for the appearance of an app.
 #### Scenario: The icon opens a page, not an application
 
 - **WHEN** a visitor opens the page from its home screen icon
-- **THEN** it opens in the browser with the browser's own controls available, so the
-  share control named by this page's instruction is where the instruction says it is
+- **THEN** it opens in the browser with the browser's own controls available, so
+  nothing she uses to read, share or leave a web page is missing
 
 ### Requirement: The home screen name follows the chosen language
 
@@ -769,47 +794,52 @@ page's decision to make, so neither source is left holding the wrong answer.
 - **THEN** a manifest exists for that language and is published, so no choice of
   language can leave the icon naming itself from a file that is not there
 
-### Requirement: Telling the visitor how to keep the page
+### Requirement: The credit stays on the page without being read out
 
-The page SHALL explain, in the reader's language, how to add it to the home screen,
-and SHALL name each control the visitor has to find by the name their screen reader
-announces for it rather than by how it looks.
+The promise that the file never leaves the browser, and the credit naming the Japan
+Go Association for the Visually Impaired with the link to this page's source, SHALL
+remain visible on the page and SHALL be hidden from assistive technology.
 
-This text exists because the page cannot perform the gesture. On iOS, "Add to Home
-Screen" is an item in Safari's own share menu and is not reachable from a web page's
-share sheet, so no button here can do it. Words are the only help a page can offer,
-which makes the wording the whole of the feature rather than a note beside it.
+Every link inside them SHALL leave the tab order with them. Text hidden from a screen
+reader while still focusable is worse than either state alone: a keyboard user reaches
+a control the screen reader cannot name, which is a control announced as nothing at
+all.
 
-Naming controls rather than describing them is the part that is easy to get wrong.
-Instructions written for sighted readers say "tap the square with an arrow coming out
-of it", which tells a blind visitor nothing about where the control is or what
-VoiceOver will call it when she reaches it.
+Both SHALL continue to follow the chosen language. They are still on screen, and a
+visible paragraph left in a language the page is not in is wrong whoever is reading
+it.
 
-#### Scenario: The instruction is on the page, in the reader's language
+#### Scenario: Read by eye, not by voice
 
-- **WHEN** a visitor reads the page in either supported language
-- **THEN** the instruction is present in that language, as text on the page, and is
-  reached by the same means as the rest of the page
+- **WHEN** a screen reader reads the page from top to bottom
+- **THEN** neither paragraph is announced, so the visitor is not made to sit through
+  them on every visit
 
-#### Scenario: Controls are named, not pictured
+#### Scenario: The credit is still published
 
-- **WHEN** the instruction refers to a control of the browser
-- **THEN** it names the control as a screen reader announces it, and does not
-  identify it by shape, colour or position alone
+- **WHEN** anyone looks at the page
+- **THEN** the promise, the credit to the Japan Go Association for the Visually
+  Impaired and the link to the source are there to be read, so where the idea and the
+  code come from stays on the page rather than only in its markup
 
-#### Scenario: No dialog and no interruption
+#### Scenario: No focusable text without a name
 
-- **WHEN** the instruction is shown
-- **THEN** it is text in the page rather than a dialog, and it does not interrupt
-  what is being read
+- **WHEN** a keyboard user moves through the page to its end
+- **THEN** neither link inside the hidden paragraphs takes focus
+
+#### Scenario: Hidden but translated
+
+- **WHEN** the language changes
+- **THEN** both paragraphs are rewritten in the newly chosen language, like every
+  other visible string on the page
 
 ### Requirement: A message describes only what it is about
 
-A message the page announces SHALL be associated with the game field only when the
-field is what the message is about. A message about anything else — the result, the
-clipboard, a file that could not be read, the address of the page — SHALL NOT become
-the field's description, SHALL NOT mark the field invalid, and SHALL NOT move focus
-into it.
+A message the page announces SHALL be associated with the file control only when the
+game the page was given is what the message is about. A message about anything else —
+the result, the file that was saved, the sheet it was handed to — SHALL NOT become
+that control's description, SHALL NOT mark it invalid, and SHALL NOT move focus into
+it.
 
 What each message is about SHALL be stated where the message is announced, and the
 region SHALL be derived from it rather than chosen alongside it. Choosing the region by
@@ -817,74 +847,72 @@ hand at each call site leaves the subject written down nowhere, so the choice is
 habit rather than a decision and no test can read it — which is how three messages came
 to be announced about the wrong thing, none of them failing a test.
 
-The field's description is read out every time she reaches the field. A message left
-there outlives the moment it was about, so "the address of this page has been copied"
-becomes part of how the page introduces her own game record, minutes after the
-copying. Marking the field invalid is worse than untidy: it tells her the record she
-is holding is wrong, on the evidence of something that never examined it.
+The control's description is read out every time she reaches it. A message left there
+outlives the moment it was about, so "the text has been saved" becomes part of how the
+page introduces the control she chooses a file with, minutes after the saving. Marking
+it invalid is worse than untidy: it tells her the file she chose is wrong, on the
+evidence of something that never examined it.
 
-A file that could not be read is the closest of these calls, since the field is where
-the file's contents were going and where she can paste them instead. It is still not
-about the field: the record already sitting there may be a perfectly good game, and
-nothing about a failed file read examined it.
+A file that could not be read is about that control, and this is a change. While the
+page held a field to paste into, a failed read was a notice: the record in the field
+might be a perfectly good game and nothing about the file had examined it. With no
+field, the chosen file is the only game the page has, so a file it could not read is a
+verdict on the only thing there is — and choosing another file, in that control, is the
+one thing she can do about it.
 
 Every message SHALL sit beside the control that produced it, as the requirement about
-a message staying with its field already asks. Where a page offers the same action in
-more than one place, each place SHALL have its own region, since one fixed region
-cannot be beside two controls at opposite ends of a page.
+a message staying with its field already asks. Where the page offers more than one
+control that answers in a notice, each SHALL have its own region, since one fixed
+region cannot sit beside two controls at opposite ends of a page. After this change one
+control answers in a notice, so the page has one notice region and it stands beside
+that control; the rule holds for the next one to arrive.
 
 At most one such message SHALL be readable at a time: putting a message in one region
 SHALL clear whatever another region was holding, so a sentence that has stopped being
 true is not left behind for a visitor reading the page in order.
 
-The field's own description is not one of these messages and SHALL NOT be cleared by
-them. It states the condition of the field, so it SHALL stand until that condition
-changes — otherwise a field marked invalid is left without the sentence saying why,
-and a screen reader announces a problem it cannot explain.
+The control's own description is not one of these messages and SHALL NOT be cleared by
+them. It states the condition of the game the page was given, so it SHALL stand until
+that condition changes — otherwise a control marked invalid is left without the
+sentence saying why, and a screen reader announces a problem it cannot explain.
 
-#### Scenario: A share failure does not accuse the record
+#### Scenario: Nothing to save is not a bad file
 
-- **WHEN** a record that failed to parse is still in the field and a share attempt
-  then fails
-- **THEN** the failure is announced, the field keeps whatever it was already saying
-  about the record, and focus stays on the control she pressed
-
-#### Scenario: Nothing to copy is not a bad record
-
-- **WHEN** the visitor activates the copy control before anything has been converted
-- **THEN** the page says there is nothing to copy yet, and does not mark the record
-  invalid or move her into the field: what is missing is a conversion, not a
+- **WHEN** the visitor activates the save control before anything has been converted
+- **THEN** the page says there is nothing to save yet, and does not mark the file
+  control invalid or move her into it: what is missing is a conversion, not a
   correction
 
-#### Scenario: A file that could not be read is not a bad record
+#### Scenario: A saving failure does not accuse the file
 
-- **WHEN** a chosen file cannot be read while a game record the visitor pasted earlier
-  is still in the field
-- **THEN** the page says the file could not be read, and does not mark that record
-  invalid or move her into the field, because nothing about the file examined the
-  record
+- **WHEN** a file that failed to parse is the last one chosen and the visitor then
+  presses the save control
+- **THEN** the outcome is announced beside the save control, the file control keeps
+  whatever it was already saying about that file, and focus stays on the control she
+  pressed
 
-#### Scenario: The field's description holds only its own messages
+#### Scenario: The control's description holds only its own messages
 
-- **WHEN** the address of the page has been copied and the visitor later reaches the
-  game field
-- **THEN** what is read out with the field is the field's own label and description,
-  and not the message about the address
+- **WHEN** the converted text has been saved and the visitor later reaches the file
+  control
+- **THEN** what is read out with it is its own label and description, and not the
+  message about the file that was saved
 
 #### Scenario: One message at a time, wherever it is
 
-- **WHEN** a visitor shares from the masthead and then shares from the footer
-- **THEN** the second outcome is announced beside the footer control and the first is
-  no longer anywhere on the page, rather than both standing as if both had just
-  happened
+- **WHEN** a visitor presses save before converting anything, and then chooses a file
+  that converts
+- **THEN** the conversion is announced with the file control and the sentence saying
+  there was nothing to save is no longer anywhere on the page, rather than both
+  standing as if both had just happened
 
 #### Scenario: A mark of invalidity keeps its explanation
 
-- **WHEN** a record that failed to parse is in the field, and the visitor then shares
-  the page and later returns to the field
-- **THEN** the field is still marked invalid and still describes what was wrong with
-  the record, because sharing the page never examined the record and so cannot be the
-  reason its explanation disappears
+- **WHEN** a file that failed to parse is the last one chosen, and the visitor then
+  presses the save control and later returns to the file control
+- **THEN** that control is still marked invalid and still describes what was wrong
+  with the file, because pressing save never examined it and so cannot be the reason
+  its explanation disappears
 
 ### Requirement: Every asset the document names is published
 
@@ -940,25 +968,25 @@ still an appearance and SHALL be written; a sentence left in place is not, and r
 a control that did nothing.
 
 She presses a second time precisely because she is unsure the first press registered.
-Silence is the one outcome she cannot investigate: she cannot glance at the clipboard, or
-see the button flash, or check whether anything moved. A control that answers once and
-then ignores her is indistinguishable, from where she is, from a control that is broken.
+Silence is the one outcome she cannot investigate: she cannot see the button flash, or
+check whether anything moved, or look in a folder without leaving the page. A control
+that answers once and then ignores her is indistinguishable, from where she is, from a
+control that is broken.
 
-Silence remains correct where there is genuinely no outcome yet — a dismissed share
-sheet, a share the browser refuses because one is already open. What this requirement
-forbids is silence standing in for an outcome that has happened.
+Silence remains correct where there is genuinely no outcome yet — a share sheet she
+dismissed, a sheet the browser refuses because one is already open. What this
+requirement forbids is silence standing in for an outcome that has happened.
 
 #### Scenario: The same answer, twice
 
-- **WHEN** the visitor activates the copy control twice with nothing converted
-- **THEN** the page says there is nothing to copy on both presses, rather than
+- **WHEN** the visitor activates the save control twice with nothing converted
+- **THEN** the page says there is nothing to save on both presses, rather than
   answering the first and ignoring the second because the sentence has not changed
 
-#### Scenario: A second copy is confirmed too
+#### Scenario: A second save is confirmed too
 
-- **WHEN** the visitor copies the result and then copies it again
-- **THEN** both copies are confirmed, because the second one happened just as much as
-  the first
+- **WHEN** the visitor saves the result and then saves it again
+- **THEN** both saves are confirmed, and each names the file it wrote
 
 #### Scenario: The same file, chosen again
 
@@ -970,8 +998,8 @@ forbids is silence standing in for an outcome that has happened.
 
 A message SHALL stand only while what it describes still holds. A message about a
 completed action SHALL NOT be announced a second time by anything other than that action
-happening again; a message about the record in the field SHALL be cleared, along with any
-mark of invalidity, when that record is replaced.
+happening again; a message about the game the page was given SHALL be cleared, along with
+any mark of invalidity, when another file is chosen.
 
 This is the third of the three questions a message has to answer, beside what it is
 about and where it is said: for how long is it true. Getting it wrong produces the
@@ -979,33 +1007,32 @@ page's most misleading behaviour, because a sentence that was accurate when writ
 read out as though it were accurate now.
 
 A failure is different from a confirmation here. A failure describes a condition that is
-still in force — the record is still broken, and she is still owed the reason in a
-language she reads — so restating it in the new language is restating something true. A
-confirmation describes an event that finished; repeating it reports an event that is not
-happening.
+still in force — the file is still the one that would not convert, and she is still owed
+the reason in a language she reads — so restating it in the new language is restating
+something true. A confirmation describes an event that finished; repeating it reports an
+event that is not happening.
 
 #### Scenario: Changing the language does not repeat a finished action
 
-- **WHEN** the visitor copies the page's address and then changes the language
+- **WHEN** the visitor saves the converted text and then changes the language
 - **THEN** the confirmation is not announced again in the new language, because nothing
-  was copied by changing the language
+  was saved by changing the language
 
 #### Scenario: Changing the language restates a standing failure
 
-- **WHEN** a record has failed to convert and the visitor then changes the language
-- **THEN** the reason is stated again in the new language, because the record is still
-  broken and the explanation is what she has to act on
+- **WHEN** a file has failed to convert and the visitor then changes the language
+- **THEN** the reason is stated again in the new language, because the file is still
+  the one she has to replace and the explanation is what she has to act on
 
-#### Scenario: A replaced record loses the verdict on the old one
+#### Scenario: Another file loses the verdict on the last one
 
-- **WHEN** a record has failed to convert and the visitor then edits or replaces it in
-  the field
-- **THEN** the field stops being marked invalid and stops describing the old failure,
-  rather than telling a screen reader that a record the page has never examined is wrong
+- **WHEN** a file has failed to convert and the visitor then chooses a different file
+- **THEN** the file control stops being marked invalid and stops describing the old
+  failure, before the new file has even been read, rather than telling a screen reader
+  that a file the page has never examined is wrong
 
 #### Scenario: The verdict returns with the next conversion
 
-- **WHEN** the visitor replaces a failed record with another one and converts it
+- **WHEN** the visitor chooses another file after a failure and it converts
 - **THEN** the page states the outcome of that conversion, so clearing the old verdict
-  leaves the field described by its own present state rather than by nothing at all
-
+  leaves the control described by its own present state rather than by nothing at all
