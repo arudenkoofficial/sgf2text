@@ -3,6 +3,7 @@ import {
   conversionMessage,
   destinationFor,
   fieldInvalidity,
+  reconvertsOnLanguageChange,
   staleRegions,
   summarise,
   survivesRestatement,
@@ -15,8 +16,8 @@ import {
   resolveLanguage,
 } from './language.ts';
 import { alternateLinks, canonicalUrl, manifestAddress } from './metadata.ts';
-import { shareThePage } from './share.ts';
-import type { ShareCapabilities } from './share.ts';
+import { downloadName, saveTheText } from './save.ts';
+import type { SaveCapabilities } from './save.ts';
 import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, stringsFor } from './ui-strings.ts';
 import type { UiStrings } from './ui-strings.ts';
 
@@ -29,51 +30,61 @@ const need = <T extends Element>(selector: string, within: ParentNode = document
   return element;
 };
 
-const form = need<HTMLFormElement>('#form');
-const input = need<HTMLTextAreaElement>('#sgf');
 const file = need<HTMLInputElement>('#file');
 const language = need<HTMLSelectElement>('#lang');
-const convertButton = need<HTMLButtonElement>('#convert');
-const copyButton = need<HTMLButtonElement>('#copy');
-const shareButtons = [
-  need<HTMLButtonElement>('#share-top'),
-  need<HTMLButtonElement>('#share-bottom'),
-];
+const saveButton = need<HTMLButtonElement>('#save');
 const result = need<HTMLPreElement>('#result');
+
+/**
+ * The game the page was given, held here rather than in a field on the page.
+ *
+ * The textarea used to be both the way in and this variable: the file handler wrote the
+ * file's text into it, `convert()` read it back, and a change of language re-converted
+ * from it. Only the first of those was ever about the visitor, and it was the one she
+ * never used — a game reaches her as a file. The other two are the machine reading its
+ * own storage, and storage does not need to be a control she tabs through.
+ */
+let record: string | null = null;
 
 /**
  * A place a message can be said, and what saying it there means.
  *
- * `kind` is the whole of the semantics: `field` is the region the game field names in
- * `aria-describedby`, so it may hold only what the record is about. Everything else is
- * a notice — an event, said beside the control that caused it.
+ * `kind` is the whole of the semantics: `field` is the region the file control names in
+ * `aria-describedby`, so it may hold only what the game the page was given is about.
+ * Everything else is a notice — an event, said beside the control that caused it.
  *
- * Four of them, because the same action is offered in two places and one region cannot
- * sit beside two controls at opposite ends of a page. Only ever one holds text.
+ * Two of them. There were four while the same action was offered at both ends of the
+ * page and one region could not sit beside two controls; the rule outlives that
+ * arrangement, and the page currently has one control that answers a press.
  */
 type Region = {
   kind: Destination;
   node: HTMLParagraphElement;
 };
 
-const fieldRegion: Region = { kind: 'field', node: need<HTMLParagraphElement>('#status') };
+/**
+ * One entry per destination, and the list of them read back off it rather than written
+ * out a second time.
+ *
+ * Keyed rather than chosen by a test on the destination, for the reason `announcement.ts`
+ * gives beside `DESTINATIONS`: a branch returning a bare constant never touches the value
+ * it switched on, so a third destination would compile and quietly inherit whichever
+ * region the test happened to fall through to.
+ *
+ * Each entry is pinned to the key it is filed under, the way the string catalogue pins
+ * each language's `htmlLang` to its own key. `kind` and the key say the same thing twice,
+ * and the two are read by different code — `staleRegions` and `fieldInvalidity` go by
+ * `kind`, `regionFor` and `standingByRegion` go by the key. Filing the notice under
+ * `field` would compile without this, and every message meant for one would be judged as
+ * the other: a save confirmation would become the file control's description and mark
+ * her file valid.
+ */
+const REGIONS = {
+  field: { kind: 'field', node: need<HTMLParagraphElement>('#status') },
+  notice: { kind: 'notice', node: need<HTMLParagraphElement>('#notice') },
+} satisfies { [D in Destination]: Region & { kind: D } };
 
-const noticeFor = (selector: string): Region => ({
-  kind: 'notice',
-  node: need<HTMLParagraphElement>(selector),
-});
-
-const resultNotice = noticeFor('#notice');
-const shareNotices = new Map<HTMLButtonElement, Region>([
-  [shareButtons[0] as HTMLButtonElement, noticeFor('#notice-top')],
-  [shareButtons[1] as HTMLButtonElement, noticeFor('#notice-bottom')],
-]);
-
-const regions: readonly Region[] = [
-  fieldRegion,
-  resultNotice,
-  ...shareNotices.values(),
-];
+const regions: readonly Region[] = Object.values(REGIONS);
 
 const ui = (): UiStrings => stringsFor(language.value);
 
@@ -84,34 +95,65 @@ const ui = (): UiStrings => stringsFor(language.value);
  *
  * A message arrives as a function of the strings rather than as a finished
  * sentence, so it can be rebuilt later in another language. The status line was
- * the one piece of text `applyLanguage` did not translate, and the messages that
- * outlive a switch are exactly the failures: every error path empties the result
- * first, and an empty result is what stops the game being re-converted. So an
- * error announced in English stayed under a `lang="ru"` document, which is the
- * wording a screen reader then reads out with the wrong language's phonemes.
+ * the one piece of text `applyLanguage` did not translate, so an error announced
+ * in English stayed under a `lang="ru"` document, which is the wording a screen
+ * reader then reads out with the wrong language's phonemes.
+ *
+ * Which messages outlive a change of language is `survivesRestatement`'s decision, not
+ * this comment's. It used to claim the failures were exactly the survivors because
+ * "every error path empties the result first" — which is false of the one error path
+ * that deliberately does not, and the guard on re-conversion was built on that false
+ * universal. A comment asserting a universal is worse than no comment: the next reader
+ * stops checking.
  */
 type Message = (strings: UiStrings) => string;
 
 /**
  * `tone` decides how it is drawn; `subject` decides everything else — which region it
- * is said in, and therefore what it means for the game field.
+ * is said in, and therefore what it means for the file control.
  *
  * These were two arguments and then one, and this is the third arrangement. A separate
- * "is this about the record" flag could contradict the region it travelled with;
- * naming the region alone removed the contradiction but left the subject unstated, so
- * the choice of region was a habit no test could read. Now the call site states the one
+ * "is this about the game" flag could contradict the region it travelled with; naming
+ * the region alone removed the contradiction but left the subject unstated, so the
+ * choice of region was a habit no test could read. Now the call site states the one
  * thing it knows and the rest follows from it.
+ *
+ * The region is not stored beside them. It is a function of the subject, and holding
+ * both let the type describe a save confirmation filed under the file control's
+ * description — the very contradiction the paragraph above says naming the region alone
+ * removed. It survived one level up: unreachable, because `announce` is the only thing
+ * that builds one, but representable. Derived where it is used instead, so it cannot
+ * disagree with the subject it came from.
  */
 type Announcement = {
   subject: Subject;
   message: Message;
   tone: Tone;
-  region: Region;
 };
 
-const standing = ({ tone, region }: Announcement): Standing => ({ tone, where: region.kind });
+const standing = ({ subject, tone }: Announcement): Standing => ({
+  tone,
+  where: destinationFor(subject),
+});
 
-let announcement: Announcement | null = null;
+const regionFor = (subject: Subject): Region => REGIONS[destinationFor(subject)];
+
+/**
+ * The standing message in each region, rather than one for the page.
+ *
+ * One variable for two regions is the same mistake this codebase has now made three
+ * times — the verdict read from `announcement` instead of the control, the latch kept
+ * for an open share sheet — and it reached the language switch. The two regions hold two
+ * independent sentences: the field's is the condition of the game the page was given,
+ * the notice's is the last event.
+ *
+ * Pressing save with nothing to save writes a notice, which replaced the page's single
+ * standing message while `staleRegions` correctly left the field's sentence alone. A
+ * change of language then restated the notice and left the field's sentence sitting in
+ * the language she had just switched away from — still the file control's description,
+ * still explaining a mark the control was still carrying.
+ */
+const standingByRegion = new Map<Destination, Announcement>();
 
 /**
  * Written every time, including when the sentence is the one already there.
@@ -125,7 +167,7 @@ let announcement: Announcement | null = null;
  *
  * Nothing is lost by writing unconditionally. Assigning `''` to a region that is already
  * empty records no mutation at all — measured too — so the clearing loop in `render`
- * costs nothing on the three regions that had nothing to clear.
+ * costs nothing on a region that had nothing to clear.
  */
 const say = (region: Region, text: string, tone: Tone | null): void => {
   region.node.textContent = text;
@@ -138,138 +180,143 @@ const say = (region: Region, text: string, tone: Tone | null): void => {
   region.node.dataset.tone = tone;
 };
 
-const render = (current: Announcement): void => {
-  const { message, tone, region } = current;
+/**
+ * Putting one message where it goes, and nothing else.
+ *
+ * Split from `render` because restating is not announcing. Restating every standing
+ * message in turn through `render` would have the field's restatement supersede the
+ * notice beside it — a language change is not an event that makes an older notice untrue.
+ */
+const draw = (current: Announcement): void => {
+  say(regionFor(current.subject), current.message(ui()), current.tone);
 
-  // Emptying the notices that are no longer true, and only those. A polite region
-  // reports what appears in it rather than what leaves, so this announces nothing —
-  // and `say` skips a region that already holds what it is being given, so re-rendering
-  // in a new language cannot make an empty region speak.
-  //
-  // The field's description is never in this set. It is the condition of the field
-  // rather than an event, and clearing it used to leave a record marked invalid with
-  // nothing on the page saying why.
-  for (const stale of staleRegions(regions, region)) {
-    say(stale, '', null);
-  }
-
-  say(region, message(ui()), tone);
-
-  // The field's description is `#status`, so a failure about the record has to mark
-  // the field invalid too — otherwise a screen reader reads the message but the input
-  // still sounds fine. A message in a notice touches nothing here: the field is
-  // neither wrong nor newly right, and a standing mark on a record that failed to
-  // parse has to survive a share that had nothing to do with it.
+  // The field's description is `#status`, which the file control names in
+  // `aria-describedby`, so a failure about the game has to mark that control invalid
+  // too — otherwise a screen reader reads the message while the control still sounds
+  // fine. A message in the notice touches nothing here: the file is neither wrong nor
+  // newly right, and a standing mark on a file that failed to parse has to survive a
+  // save that had nothing to do with it.
   const invalidity = fieldInvalidity(standing(current));
   if (invalidity !== null) {
-    input.setAttribute('aria-invalid', invalidity);
+    file.setAttribute('aria-invalid', invalidity);
+  }
+};
+
+const render = (current: Announcement): void => {
+  // Emptying the notices that are no longer true, and only those. A polite region
+  // reports what appears in it rather than what leaves, so this announces nothing.
+  //
+  // The field's description is never in this set. It is the condition of the game the
+  // page was given rather than an event, and clearing it used to leave a file marked
+  // invalid with nothing on the page saying why.
+  //
+  // A region emptied here is forgotten as well, or a change of language would restate a
+  // sentence that has already been superseded and wiped from the page.
+  for (const stale of staleRegions(regions, regionFor(current.subject))) {
+    say(stale, '', null);
+    standingByRegion.delete(stale.kind);
+  }
+
+  draw(current);
+};
+
+const announce = (subject: Subject, message: Message, tone: Tone = 'info'): void => {
+  const current: Announcement = { subject, message, tone };
+
+  standingByRegion.set(destinationFor(subject), current);
+  render(current);
+
+  // The same condition that marks the control invalid, asked once rather than restated:
+  // a control worth marking is a control worth sending her to.
+  if (fieldInvalidity(standing(current)) === 'true') {
+    file.focus();
   }
 };
 
 /**
- * `notice` says which notice, for the messages that are said in one. It is only ever
- * needed by the share controls, since they are the same action offered twice and the
- * answer belongs beside the one that was pressed; everything else has a single home and
- * takes the default.
- *
- * Whether a notice is used at all is not this argument's business — `destinationFor`
- * decides that from the subject, so a message about the record cannot be talked into
- * the footer by passing one.
- */
-const announce = (
-  subject: Subject,
-  message: Message,
-  tone: Tone = 'info',
-  notice: Region = resultNotice,
-): void => {
-  const region = destinationFor(subject) === 'field' ? fieldRegion : notice;
-
-  announcement = { subject, message, tone, region };
-  render(announcement);
-
-  // The same condition that marks the field invalid, asked once rather than restated:
-  // a field worth marking is a field worth sending her to.
-  if (fieldInvalidity(standing(announcement)) === 'true') {
-    input.focus();
-  }
-};
-
-/**
- * Re-renders the standing message in the current language. Deliberately not
+ * Re-renders every standing message in the current language. Deliberately not
  * `announce`: moving focus belongs to the failure that caused the message, not to
  * a later change of language. A visitor operating the language control must not
- * be thrown out of it and into the game field.
+ * be thrown out of it and into the file control.
  *
  * A message that has stopped being true is dropped rather than translated. Restating a
- * failure is restating something still in force; restating "the address of this page has
- * been copied" announces a copy that is not happening, which is what the page did until
- * now. It is forgotten as well as cleared, so a second change of language cannot bring
- * it back.
+ * failure is restating something still in force; restating "the file has been saved"
+ * announces a save that is not happening, which is what the page did until now. It is
+ * forgotten as well as cleared, so a second change of language cannot bring it back.
+ *
+ * Every region rather than the page's last message, because the page can be holding two
+ * true sentences at once: a verdict on the file she chose, and a notice about the save
+ * she just pressed. Translating only the more recent of the two left the other in the
+ * language she had switched away from, and the one it left behind was the file control's
+ * own description.
  */
 const reannounce = (): void => {
-  if (announcement === null) {
-    return;
-  }
+  for (const region of regions) {
+    const current = standingByRegion.get(region.kind);
 
-  if (!survivesRestatement(standing(announcement))) {
-    say(announcement.region, '', null);
-    announcement = null;
-    return;
-  }
+    if (current === undefined) {
+      continue;
+    }
 
-  render(announcement);
+    if (!survivesRestatement(standing(current))) {
+      say(region, '', null);
+      standingByRegion.delete(region.kind);
+      continue;
+    }
+
+    draw(current);
+  }
 };
 
 /**
- * The field's description and its mark are a verdict on one particular record. She
- * replaces the record, and the verdict is about something that no longer exists — so it
- * goes when she edits, rather than standing until the next conversion and telling a
- * screen reader that a record the page has never examined is wrong.
+ * The file control's description and its mark are a verdict on one particular file. She
+ * chooses another, and the verdict is about something she is no longer holding — so it
+ * goes when she chooses, rather than standing until the next conversion and telling a
+ * screen reader that a file the page has never examined is wrong.
  *
  * The mark is removed rather than set to `'false'`: there is no verdict now, and
- * `'false'` is a verdict — it would claim the new record is valid, which nothing checked.
+ * `'false'` is a verdict — it would claim the new file is good, which nothing checked.
  *
- * Only the record's own message. A notice about the clipboard or the page has nothing to
- * do with what she is typing, and clearing it would make editing the field a way to erase
- * an answer she has not read yet.
+ * Only the game's own message. A notice about the file she saved has nothing to do with
+ * the one she is choosing, and clearing it would make picking a file a way to erase an
+ * answer she has not read yet.
  *
- * Read from the field itself rather than from `announcement`, and the first attempt got
- * this wrong in exactly the way this file's own distinction predicts. `announcement` is
- * the last thing the page *said*; the field's description is a state that outlives it. So
- * a failed conversion followed by a share leaves the verdict standing in the field while
- * the last announcement is the share's — and asking `announcement` then reports no
- * verdict to clear. Which is the same mistake as keeping our own flag for an open share
- * sheet: one variable answering for two independent facts.
+ * Read from the control itself rather than from what the page last said, and the first
+ * attempt at this got it wrong in exactly the way this file's own distinction predicts.
+ * The last thing the page *said* may be about the save she just pressed; the control's
+ * description is a state that outlives it. So a failed conversion followed by a save
+ * leaves the verdict standing while the last announcement is the save's — and asking for
+ * the last announcement then reports no verdict to clear. Which is the same mistake as
+ * keeping our own flag for an open share sheet: one variable answering for two
+ * independent facts.
  *
- * The standing announcement is forgotten only when it is the one being cleared, so a
- * later change of language cannot restate it.
+ * Only the field's standing message is forgotten, so a later change of language cannot
+ * restate the verdict — and the notice beside it, which is about something else, keeps
+ * both its sentence and its translation.
  */
 const forgetTheVerdict = (): void => {
-  if (fieldRegion.node.textContent === '' && !input.hasAttribute('aria-invalid')) {
+  if (REGIONS.field.node.textContent === '' && !file.hasAttribute('aria-invalid')) {
     return;
   }
 
-  say(fieldRegion, '', null);
-  input.removeAttribute('aria-invalid');
-
-  if (announcement !== null && announcement.region.kind === 'field') {
-    announcement = null;
-  }
+  say(REGIONS.field, '', null);
+  file.removeAttribute('aria-invalid');
+  standingByRegion.delete('field');
 };
 
 const showResult = (text: string): void => {
   // textContent only. A player name or comment may contain angle brackets, and
   // nothing from a game file is ever treated as markup.
   result.textContent = text;
-  copyButton.setAttribute('aria-disabled', text === '' ? 'true' : 'false');
+  saveButton.setAttribute('aria-disabled', text === '' ? 'true' : 'false');
 };
 
 const convert = (): void => {
-  const sgf = input.value.trim();
+  const held = record ?? '';
 
-  if (sgf === '') {
+  if (held.trim() === '') {
     showResult('');
-    announce('record', (strings) => strings.emptyInput, 'error');
+    announce('record', (strings) => strings.emptyFile, 'error');
     return;
   }
 
@@ -278,12 +325,11 @@ const convert = (): void => {
     // announced, and the announcement is restated whenever the language changes.
     // Only the summary is captured, so the record itself is free once the text is
     // on the page rather than held for as long as the message stands.
-    const file = sgfToDocument(input.value);
-    const converted = summarise(file);
-    showResult(documentToText(file, { locale: language.value }));
-    announce('record', (strings) => conversionMessage(converted, strings));
+    const converted = sgfToDocument(held);
+    const summary = summarise(converted);
+    showResult(documentToText(converted, { locale: language.value }));
+    announce('record', (strings) => conversionMessage(summary, strings));
   } catch (error) {
-    // The input is left exactly as the visitor typed it, so it can be corrected.
     // Only translated wording is announced: the library's own messages are
     // English, and English spliced into Russian speech is barely intelligible
     // through a screen reader.
@@ -321,23 +367,16 @@ const convert = (): void => {
  */
 const pageBase = (): URL => new URL('.', window.location.href);
 
-/**
- * The address the share control hands over: the same one the canonical link
- * declares, so what is shared, what the address bar shows and what a search engine
- * is told cannot become three different answers.
- *
- * Deliberately not `location.href`, which is usually right and occasionally not:
- * `rememberLanguageInUrl` is wrapped in a `try` because Safari refuses history writes
- * after enough of them, and that refusal is silent. So the address bar is the one
- * source that can disagree with the language actually being read.
- */
-const pageAddress = (): string => canonicalUrl(pageBase(), language.value);
-
 const applyAddresses = (chosen: string): void => {
   const base = pageBase();
 
-  need<HTMLLinkElement>('link[rel="canonical"]').href = canonicalUrl(base, chosen);
-  need<HTMLMetaElement>('meta[property="og:url"]').content = canonicalUrl(base, chosen);
+  // The one address, written to both tags. A canonical link and a link-preview address
+  // that disagree describe two pages rather than one, so they are the same string here
+  // rather than two calls that could come to differ.
+  const address = canonicalUrl(base, chosen);
+
+  need<HTMLLinkElement>('link[rel="canonical"]').href = address;
+  need<HTMLMetaElement>('meta[property="og:url"]').content = address;
 
   for (const { hreflang, href } of alternateLinks(base, SUPPORTED_LANGUAGES)) {
     const link = document.querySelector<HTMLLinkElement>(
@@ -357,6 +396,13 @@ const link = (href: string): HTMLAnchorElement => {
   const anchor = document.createElement('a');
   anchor.href = href;
   anchor.textContent = href.replace(/^https:\/\//, '');
+
+  // Out of the tab order, because the paragraph holding it is out of the accessibility
+  // tree. A link a keyboard user can reach and a screen reader cannot name is announced
+  // as nothing at all — worse than either half on its own. Set here as well as in the
+  // HTML, since this function rebuilds the paragraph on every change of language and
+  // would otherwise hand the attribute back.
+  anchor.tabIndex = -1;
 
   return anchor;
 };
@@ -395,26 +441,23 @@ const applyVisible = (strings: UiStrings): void => {
   document.documentElement.lang = strings.htmlLang;
   document.title = strings.title;
 
-  need('#skip-link').textContent = strings.skipLink;
-  need('#subtitle').textContent = strings.subtitle;
+  // The heading's tail only. Writing to the heading itself would delete the accent mark
+  // drawn inside the name, which is the mistake the share control's label taught this
+  // page — and one nobody would see while reading it in English.
+  need('#name-suffix').textContent = strings.nameSuffix;
   need('#tagline').textContent = strings.tagline;
-  need('#sgf-label').textContent = strings.sgfLabel;
   need('#file-label').textContent = strings.fileLabel;
   need('#lang-label').textContent = strings.langLabel;
   need('#input-heading').textContent = strings.inputHeading;
   need('#result-heading').textContent = strings.resultHeading;
+
+  // Hidden from assistive technology and still translated: both paragraphs are on
+  // screen, and a visible paragraph left in the language the page is not in is wrong
+  // whoever is reading it.
   need('#privacy').textContent = strings.privacy;
-  need('#keep-summary').textContent = strings.keepSummary;
-  need('#keep-instruction').textContent = strings.keepInstruction;
   applyCredits(strings);
-  convertButton.textContent = strings.convert;
-  copyButton.textContent = strings.copy;
-  for (const button of shareButtons) {
-    // The label is its own element, so translating it cannot reach the mark beside it.
-    // Writing to the button's text would have deleted the glyph, and relying on the
-    // last child would have deleted it the day somebody reformatted the markup.
-    need('.label', button).textContent = strings.share;
-  }
+
+  saveButton.textContent = strings.save;
   result.dataset.placeholder = strings.placeholder;
   reannounce();
 };
@@ -456,9 +499,15 @@ const applyHomeScreenName = (strings: UiStrings): void => {
  *
  * The order is what each failure costs, cheapest last: labels she is reading now,
  * then a crawler's signal, then a name she will read the next time she looks at her
- * home screen. Nothing follows the last one, so nothing can be taken down by it.
+ * home screen.
  *
- * A throw in here is our defect, not a condition of the visitor's browser, so
+ * Each of the two cheap ones is caught rather than merely placed last. "Nothing follows
+ * it" was true of this function and false of its caller, where the URL, the cookie and
+ * the re-conversion of the game on screen all follow — so a renamed manifest tag left the
+ * page declaring one language over a game rendered in the other, with the cookie still
+ * holding the language she had just left.
+ *
+ * A throw in either is our defect, not a condition of the visitor's browser, so
  * unlike the cookie and the address bar it is reported. The page makes no network
  * request by design, which leaves the console as the only place to report it.
  */
@@ -473,29 +522,12 @@ const applyLanguage = (): void => {
     console.error('The page metadata could not be updated', error);
   }
 
-  applyHomeScreenName(strings);
-};
-
-form.addEventListener('submit', (event) => {
-  event.preventDefault();
-  convert();
-});
-
-/**
- * A record in the field is unsaved work: it was pasted or read from a file, this
- * page stores nothing, and a reload loses it with no way back.
- *
- * Guarded on the field being non-empty, which keeps the dialog away from the
- * visitor who has converted nothing and is simply leaving. The browser decides
- * the wording — no message of ours is shown, and none is worth writing.
- */
-window.addEventListener('beforeunload', (event) => {
-  if (input.value.trim() === '') {
-    return;
+  try {
+    applyHomeScreenName(strings);
+  } catch (error) {
+    console.error('The home screen name could not be updated', error);
   }
-
-  event.preventDefault();
-});
+};
 
 /**
  * The chosen language lives in the URL, so a link can open the page in either
@@ -582,17 +614,24 @@ language.addEventListener('change', () => {
   rememberLanguageInUrl();
   rememberLanguageInCookie();
 
-  // A game already converted is re-rendered, so the visitor does not have to
-  // paste it again to hear it in another language.
-  if (result.textContent !== '') {
+  // A game already converted is re-rendered, so the visitor does not have to choose
+  // the file again to hear it in another language.
+  //
+  // Both halves of the condition are load-bearing, and `announcement.ts` holds the
+  // reasoning for each: a result on the page is the game worth re-rendering, and a
+  // verdict standing on the file control outranks it. `applyVisible` has just restated
+  // whatever stands, through `reannounce`, which deliberately does not move focus —
+  // converting again instead would run `announce`, mark the control and pull her out of
+  // the language control she is operating.
+  if (
+    reconvertsOnLanguageChange({
+      hasResult: result.textContent !== '',
+      fileIsMarkedInvalid: file.getAttribute('aria-invalid') === 'true',
+    })
+  ) {
     convert();
   }
 });
-
-// Typing or pasting replaces the record, which retires whatever the page last said about
-// the old one. Not fired by the page's own writes, so reading a file still converts and
-// announces normally.
-input.addEventListener('input', forgetTheVerdict);
 
 file.addEventListener('change', () => {
   const chosen = file.files?.[0];
@@ -607,111 +646,220 @@ file.addEventListener('change', () => {
   // read is unaffected.
   file.value = '';
 
+  // Choosing a file replaces the game the page was given, which retires whatever it
+  // last said about the one before. Before the read rather than after it: a file that
+  // cannot be read at all would otherwise land a notice on top of a verdict about a
+  // different file, and leave that verdict standing.
+  forgetTheVerdict();
+
   chosen
     .text()
     .then((text) => {
-      input.value = text;
+      record = text;
       convert();
     })
     .catch(() => {
-      // A notice, not the field's description. The field is where the file's contents
-      // were going, which is the whole of its claim on the message — nothing here read
-      // the record, so nothing here may call it invalid or pull her into it. She may be
-      // holding a perfectly good game she pasted an hour ago.
-      announce('file', (strings) => strings.fileFailed, 'error');
+      // The record is left as it was, along with the result still on the page: nothing
+      // here read the new file, so nothing here knows the old game is no longer the one
+      // she is looking at. What she is told is that this file could not be read, and
+      // the control that took it is where she goes to choose another.
+      //
+      // And that the previous game is what she is still holding, where it is — because
+      // the save control is live and would write that game to her device under a fresh
+      // timestamp, which is a substitution she has no way to notice.
+      //
+      // Asked inside the message rather than captured beside it, so a restatement in
+      // another language describes the page as it is then rather than as it was.
+      announce('file', (strings) => strings.fileFailed(result.textContent !== ''), 'error');
     });
 });
 
-copyButton.addEventListener('click', () => {
+/**
+ * The two ways a file can reach her device, built at press time with the file already
+ * made. A capability can be granted between one press and the next, and whether a file
+ * can be handed to a sheet is a question about that particular file rather than about
+ * files in general.
+ *
+ * The two are detected differently, and they have to be: `SaveCapabilities` in `save.ts`
+ * carries the reasoning, beside the type that encodes it. Kept in one place because two
+ * copies of an argument rot independently and the next edit updates one of them.
+ *
+ * What belongs here rather than there is the risk the feature test carries. WebKit
+ * reflected `HTMLAnchorElement.download` before it honoured it, so a browser can pass
+ * this test and still navigate to the blob — announcing a file that was never written,
+ * on a page replaced by unlabelled text. That is the change's headline risk and it is
+ * unsettled: it wants checking on her own device, and inverting the branch order on iOS
+ * is the remedy if it turns out to bite.
+ */
+const TEXT_FILE = 'text/plain;charset=utf-8';
+
+const saveCapabilities = ({ name, text }: { name: string; text: string }): SaveCapabilities => {
+  const capabilities: SaveCapabilities = {};
+
+  if ('download' in HTMLAnchorElement.prototype) {
+    capabilities.download = (): void => {
+      const address = URL.createObjectURL(new Blob([text], { type: TEXT_FILE }));
+
+      try {
+        const anchor = document.createElement('a');
+        anchor.href = address;
+        anchor.download = name;
+
+        // In the document for the click. A detached anchor works in current browsers and
+        // did not always, and the cost of not finding out which one she is holding is one
+        // append and one removal in the same task.
+        //
+        // Firefox is the browser that required it: a synthetic click on an anchor outside
+        // the document started no download at all, silently, which is this page's worst
+        // shape of failure.
+        document.body.append(anchor);
+
+        try {
+          anchor.click();
+        } finally {
+          anchor.remove();
+        }
+      } finally {
+        // Revoked on a later task. Revoking in this one cancels the download in Safari,
+        // which is the browser this page is most read in.
+        //
+        // In a `finally` because `saveTheText` treats this closure as all-or-nothing and
+        // falls through to the sheet when it throws. Scheduling the revoke only on the
+        // way out of a successful run leaked the address for the rest of the visit on
+        // every fall-through.
+        window.setTimeout(() => {
+          URL.revokeObjectURL(address);
+        }, 0);
+      }
+    };
+  }
+
+  // Built only where it can be used. This was constructed unconditionally, above the
+  // test that decides whether anything will take it — so a browser with no share sheet
+  // paid for a second copy of a 300-move game on every press, and a throw from either
+  // this line or the test destroyed the link branch that had already been built and
+  // would have worked.
+  //
+  // Typed like the blob, charset included. It was bare `text/plain` here, and a share
+  // target that takes the type at its word reads her Russian as latin-1 — the same
+  // mojibake the download branch was careful to prevent, through the branch that had no
+  // such note.
+  if (typeof navigator.share === 'function' && typeof navigator.canShare === 'function') {
+    try {
+      const saved = new File([text], name, { type: TEXT_FILE });
+
+      if (navigator.canShare({ files: [saved] })) {
+        capabilities.share = async (): Promise<void> => {
+          // The file alone: no title, no text. A target offered both may take the string
+          // and drop the file, which is the whole of what she pressed the control for.
+          await navigator.share({ files: [saved] });
+        };
+      }
+    } catch (error) {
+      // `canShare` has shipped ahead of file support, and a browser that dislikes a
+      // `files` member throws rather than answering false. Reported, and the link branch
+      // above is left standing.
+      console.error('The sheet branch could not be prepared', error);
+    }
+  }
+
+  return capabilities;
+};
+
+/**
+ * The one thing the page can say when a press has led nowhere, and it is reached from
+ * four places: a capability that would not build, the outcome that reports its own
+ * failure, an outcome the union does not yet know about, and a promise that broke the
+ * contract `save.ts` documents.
+ *
+ * Written once because the sentence is the whole of what is left — it tells her the text
+ * is still on the page and how to take it from there — and four copies of it are four
+ * chances for one of them to become a different account of the same dead end.
+ */
+const announceSaveFailure = (): void => {
+  announce('result', (strings) => strings.saveFailed, 'error');
+};
+
+saveButton.addEventListener('click', () => {
   const text = result.textContent ?? '';
+
   if (text === '') {
-    // The button stays focusable while there is nothing to copy, so say why
-    // rather than doing nothing when it is pressed.
-    announce('result', (strings) => strings.emptyResult, 'error');
+    // The button stays focusable while there is nothing to save, so say why rather
+    // than doing nothing when it is pressed.
+    announce('result', (strings) => strings.nothingToSave, 'error');
     return;
   }
 
-  navigator.clipboard
-    .writeText(text)
-    .then(() => {
-      announce('result', (strings) => strings.copied);
-    })
-    .catch(() => {
-      announce('result', (strings) => strings.copyFailed, 'error');
-    });
-});
+  // Computed once and used twice, for the file and for the sentence naming it. Computing
+  // it again for the announcement would name a file one minute off the one written,
+  // whenever a press straddles a minute — and the name is her only handle on the file.
+  const name = downloadName(new Date());
 
-/**
- * The two capabilities, read at press time rather than once at load: a permission
- * can be granted between one press and the next.
- *
- * `share` is bound because `navigator.share` called detached loses its receiver. It
- * is offered only when it is a function, and even then the call may be refused —
- * which is why `shareThePage` decides by outcome rather than trusting this check.
- *
- * `copy` reaches through `navigator.clipboard`, which is absent on an insecure
- * origin; the property access throws, the promise rejects, and the fallback path
- * treats it as the failure it is.
- */
-const shareCapabilities = (): ShareCapabilities => ({
-  share:
-    typeof navigator.share === 'function' ? navigator.share.bind(navigator) : undefined,
-  copy: async (text: string) => {
-    await navigator.clipboard.writeText(text);
-  },
-});
+  // Built inside the guarantee that she is told something, rather than as an argument to
+  // it. Evaluated in the call, this ran before any promise existed, so the backstop below
+  // could not see it throw — and a throw from here left the click handler with nothing
+  // said in either region. Silence is the one outcome she cannot investigate, and it was
+  // reachable only once she had a conversion, which is the moment it matters most.
+  let capabilities: SaveCapabilities;
 
-/**
- * One handler, bound to both controls, each answering in its own region.
- *
- * The region comes from the button that was pressed rather than from a fixed choice,
- * which is the whole reason there are two of them: a confirmation drawn at the other
- * end of the page is one a reader at high magnification never sees.
- */
-const share = (notice: Region): void => {
-  shareThePage(shareCapabilities(), { title: ui().title, url: pageAddress() })
-    .then((outcome) => {
-      if (outcome === 'busy') {
-        // A sheet is already open and unanswered, which is what the browser says when
-        // the other control is pressed while the first one's sheet stands. Saying
-        // anything would report an outcome that has not happened yet.
+  try {
+    capabilities = saveCapabilities({ name, text });
+  } catch (error) {
+    console.error('The save capabilities could not be built', error);
+    announceSaveFailure();
+    return;
+  }
+
+  saveTheText(capabilities).then(
+    (outcome) => {
+      if (outcome === 'cancelled' || outcome === 'busy') {
+        // She closed the sheet, or one she opened is still standing. Nothing has
+        // happened yet, and saying anything would report an outcome that has not.
         return;
       }
 
-      if (outcome === 'cancelled') {
-        // She closed the sheet. Nothing happened, and saying so would report a
-        // failure for a decision she made on purpose.
+      if (outcome === 'saved') {
+        announce('result', (strings) => strings.savedToDevice(name));
         return;
       }
 
       if (outcome === 'shared') {
-        announce('page', (strings) => strings.shared, 'info', notice);
+        // Not the same sentence as a file written to her downloads: the two end up in
+        // different places and she cannot look to find out which.
+        announce('result', (strings) => strings.handedToSheet(name));
         return;
       }
 
-      if (outcome === 'copied') {
-        announce('page', (strings) => strings.addressCopied, 'info', notice);
+      if (outcome === 'failed') {
+        // Drawn in the failure colour, but said in the notice: the file she chose is not
+        // what failed, so it is not marked invalid and does not take focus. The message
+        // names the text still on the page, which is all the page has left to offer.
+        announceSaveFailure();
         return;
       }
 
-      // Drawn in the failure colour, but said in a notice: the game in the field is not
-      // what failed, so it is not marked invalid and does not take focus. The message
-      // names the browser's own share control, which is all the page has left to offer.
-      announce('page', (strings) => strings.shareFailed, 'error', notice);
-    })
-    .catch(() => {
-      // `shareThePage` is documented never to reject, and this is the backstop for
-      // that promise being broken: silence is the one outcome a blind visitor cannot
+      // A sixth outcome is a compile error here rather than a sentence chosen by a
+      // fall-through. The union is the whole vocabulary of what she is told, so the one
+      // place that decides what she hears is the place that has to be made to face a new
+      // member — an outcome that ought to be silent would otherwise be announced as a
+      // failure, which is the mistake `save.ts` exists to prevent, one level up.
+      const unanswered: never = outcome;
+      void unanswered;
+      announceSaveFailure();
+    },
+    () => {
+      // `saveTheText` is documented never to reject, and this is the backstop for that
+      // promise being broken: silence is the one outcome a blind visitor cannot
       // detect, so something is always said.
-      announce('page', (strings) => strings.shareFailed, 'error', notice);
-    });
-};
-
-for (const [button, region] of shareNotices) {
-  button.addEventListener('click', () => {
-    share(region);
-  });
-}
+      //
+      // The second argument to `then` rather than a `catch` chained after it. Chained, it
+      // also caught a throw from the handler above — so a file that had been written was
+      // announced as a save that failed, sending her to look for the text on the page
+      // instead of the file on her device.
+      announceSaveFailure();
+    },
+  );
+});
 
 restoreLanguage();
 applyLanguage();

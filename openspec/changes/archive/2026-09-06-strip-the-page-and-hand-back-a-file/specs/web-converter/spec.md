@@ -1,8 +1,171 @@
-# web-converter Specification
+## ADDED Requirements
 
-## Purpose
-TBD - created by archiving change add-sgf-text-converter. Update Purpose after archive.
-## Requirements
+### Requirement: Saving the converted text as a file
+
+The page SHALL let the visitor save the converted text to her device as a plain-text
+file, and SHALL do so on the browser in her hand rather than only where a link is
+allowed to write one. Where the browser honours a download from a link, the file SHALL
+be written. Where it does not, the same control SHALL hand the file to the system
+share sheet, so that the text still reaches her device through the one route that
+browser offers.
+
+Which branch is possible SHALL be decided when the control is pressed, with the file
+already built: a capability can be granted between one press and the next, and whether
+a file can be handed to a sheet is a question about that particular file.
+
+The control SHALL be present whenever the page is, SHALL be marked disabled while
+there is nothing to save, and SHALL NOT be removed from the tab order — a control that
+appears only once it can be used is a control she cannot discover before she needs it,
+and one taken out of the tab order is a control she never learns exists. It SHALL
+carry one name, because it does one thing, and the difference between its two branches
+is the browser's rather than hers.
+
+The file name SHALL carry the date and the time of the save, in her own local time,
+so that one save does not silently replace another and so that she can tell two of
+them apart by name. It SHALL contain no character a file system forbids: a name the
+browser has to rewrite before writing it is a name she was promised and did not get.
+
+Every press SHALL be answered in a polite live region beside the control. A
+confirmation SHALL name the file and SHALL say which of the two things happened: a
+file written to her downloads and a file handed to a sheet end up in different places,
+and she cannot look to find out which.
+
+A sheet she closes, and a sheet the browser refuses because one is already open, SHALL
+NOT be announced as failures. The first is a decision she made; the second has no
+outcome yet, and reporting one would report something that has not happened. Where
+neither branch is available, or a branch fails, the page SHALL say so and SHALL name
+the result on the page as the way to take the text manually — which is why the result
+keeps its place in the tab order.
+
+Saving SHALL happen entirely in the browser. The text reaches her device without any
+request carrying it anywhere, under the same promise the rest of the page makes.
+
+Nothing SHALL interrupt her when she leaves the page or reloads it. The record came
+from a file she still holds and the converted text can be saved, so there is no
+unsaved work left for a confirmation dialog to defend.
+
+#### Scenario: The text is written to her device
+
+- **WHEN** the visitor activates the save control with a conversion on the page, in a
+  browser that honours a download from a link
+- **THEN** a plain-text file holding exactly the result text is written to her device,
+  its name carrying the date and the time of the save, and the live region beside the
+  control names the file and says it was saved
+
+#### Scenario: Handed to the sheet where a link cannot save
+
+- **WHEN** the visitor activates the save control in a browser that does not honour a
+  download from a link
+- **THEN** the file is handed to the system share sheet instead, and the live region
+  names the file and says it was handed over rather than claiming it was saved
+
+#### Scenario: A name a file system accepts
+
+- **WHEN** the name of the file is built
+- **THEN** it holds no colon and no other character forbidden by Windows or
+  historically illegal in the Finder, so what lands on her device is the name she was
+  told about rather than one the browser silently repaired
+
+#### Scenario: Her clock, not a server's
+
+- **WHEN** the file is named
+- **THEN** the date and the time in the name are the ones her own device reads, since
+  the name exists for her to recognise
+
+#### Scenario: Nothing to save yet
+
+- **WHEN** the visitor activates the save control before anything has been converted
+- **THEN** the page says there is nothing to save, and does not mark the file control
+  invalid or move her into it: what is missing is a conversion, not a correction
+
+#### Scenario: Discoverable before it is needed
+
+- **WHEN** a visitor moves through the page by keyboard before converting anything
+- **THEN** she reaches the save control and hears that it exists, because it is marked
+  disabled rather than removed from the page or from the tab order
+
+#### Scenario: Saving twice is answered twice
+
+- **WHEN** the visitor saves the text and then saves it again without converting
+  anything in between
+- **THEN** both saves happen and both are announced, because the second one happened
+  just as much as the first
+
+#### Scenario: A sheet she closes is not a failure
+
+- **WHEN** the file is handed to the share sheet and the visitor closes it without
+  choosing a destination
+- **THEN** nothing is announced as a failure, because backing out on purpose is not an
+  error and reporting one would tell her something went wrong when nothing did
+
+#### Scenario: A sheet already standing
+
+- **WHEN** the save control is pressed while a sheet from an earlier press is still
+  open and unanswered
+- **THEN** nothing is announced, because the outcome she is waiting for has not
+  happened yet; and a sheet whose outcome never arrives SHALL NOT leave the control
+  unable to try again
+
+#### Scenario: Neither branch, and nothing hidden
+
+- **WHEN** the browser will neither write the file from a link nor take it into a
+  sheet, or the attempt fails
+- **THEN** the live region says the text could not be saved and names the result on
+  the page as the way to take it manually, rather than the control failing silently
+
+#### Scenario: Leaving is not interrupted
+
+- **WHEN** the visitor reloads the page or navigates away after converting a game
+- **THEN** nothing asks her to confirm, because the game came from a file she still
+  has and the text was hers to save
+
+#### Scenario: The text is not sent anywhere
+
+- **WHEN** the file is saved
+- **THEN** the page issues no network request carrying the converted text, so saving
+  keeps the promise the conversion already makes
+
+### Requirement: The credit stays on the page without being read out
+
+The promise that the file never leaves the browser, and the credit naming the Japan
+Go Association for the Visually Impaired with the link to this page's source, SHALL
+remain visible on the page and SHALL be hidden from assistive technology.
+
+Every link inside them SHALL leave the tab order with them. Text hidden from a screen
+reader while still focusable is worse than either state alone: a keyboard user reaches
+a control the screen reader cannot name, which is a control announced as nothing at
+all.
+
+Both SHALL continue to follow the chosen language. They are still on screen, and a
+visible paragraph left in a language the page is not in is wrong whoever is reading
+it.
+
+#### Scenario: Read by eye, not by voice
+
+- **WHEN** a screen reader reads the page from top to bottom
+- **THEN** neither paragraph is announced, so the visitor is not made to sit through
+  them on every visit
+
+#### Scenario: The credit is still published
+
+- **WHEN** anyone looks at the page
+- **THEN** the promise, the credit to the Japan Go Association for the Visually
+  Impaired and the link to the source are there to be read, so where the idea and the
+  code come from stays on the page rather than only in its markup
+
+#### Scenario: No focusable text without a name
+
+- **WHEN** a keyboard user moves through the page to its end
+- **THEN** neither link inside the hidden paragraphs takes focus
+
+#### Scenario: Hidden but translated
+
+- **WHEN** the language changes
+- **THEN** both paragraphs are rewritten in the newly chosen language, like every
+  other visible string on the page
+
+## MODIFIED Requirements
+
 ### Requirement: Converting on the page
 
 The web page SHALL take an SGF game as a `.sgf` file and SHALL show the converted
@@ -276,166 +439,6 @@ English would pass even if the source it names were never read at all.
 - **THEN** the reason is stated again in the new language and the page does not
   convert anything, so focus stays in the language control she is operating
 
-### Requirement: Saving the converted text as a file
-
-The page SHALL let the visitor save the converted text to her device as a plain-text
-file, and SHALL do so on the browser in her hand rather than only where a link is
-allowed to write one. Where the browser honours a download from a link, the file SHALL
-be written. Where it does not, the same control SHALL hand the file to the system
-share sheet, so that the text still reaches her device through the one route that
-browser offers.
-
-Which branch is possible SHALL be decided when the control is pressed, with the file
-already built: a capability can be granted between one press and the next, and whether
-a file can be handed to a sheet is a question about that particular file.
-
-The control SHALL be present whenever the page is, SHALL be marked disabled while
-there is nothing to save, and SHALL NOT be removed from the tab order — a control that
-appears only once it can be used is a control she cannot discover before she needs it,
-and one taken out of the tab order is a control she never learns exists. It SHALL
-carry one name, because it does one thing, and the difference between its two branches
-is the browser's rather than hers.
-
-The file name SHALL carry the date and the time of the save, in her own local time,
-so that one save does not silently replace another and so that she can tell two of
-them apart by name. It SHALL contain no character a file system forbids: a name the
-browser has to rewrite before writing it is a name she was promised and did not get.
-
-Every press SHALL be answered in a polite live region beside the control. A
-confirmation SHALL name the file and SHALL say which of the two things happened: a
-file written to her downloads and a file handed to a sheet end up in different places,
-and she cannot look to find out which.
-
-A sheet she closes, and a sheet the browser refuses because one is already open, SHALL
-NOT be announced as failures. The first is a decision she made; the second has no
-outcome yet, and reporting one would report something that has not happened. Where
-neither branch is available, or a branch fails, the page SHALL say so and SHALL name
-the result on the page as the way to take the text manually — which is why the result
-keeps its place in the tab order.
-
-Saving SHALL happen entirely in the browser. The text reaches her device without any
-request carrying it anywhere, under the same promise the rest of the page makes.
-
-Nothing SHALL interrupt her when she leaves the page or reloads it. The record came
-from a file she still holds and the converted text can be saved, so there is no
-unsaved work left for a confirmation dialog to defend.
-
-#### Scenario: The text is written to her device
-
-- **WHEN** the visitor activates the save control with a conversion on the page, in a
-  browser that honours a download from a link
-- **THEN** a plain-text file holding exactly the result text is written to her device,
-  its name carrying the date and the time of the save, and the live region beside the
-  control names the file and says it was saved
-
-#### Scenario: Handed to the sheet where a link cannot save
-
-- **WHEN** the visitor activates the save control in a browser that does not honour a
-  download from a link
-- **THEN** the file is handed to the system share sheet instead, and the live region
-  names the file and says it was handed over rather than claiming it was saved
-
-#### Scenario: A name a file system accepts
-
-- **WHEN** the name of the file is built
-- **THEN** it holds no colon and no other character forbidden by Windows or
-  historically illegal in the Finder, so what lands on her device is the name she was
-  told about rather than one the browser silently repaired
-
-#### Scenario: Her clock, not a server's
-
-- **WHEN** the file is named
-- **THEN** the date and the time in the name are the ones her own device reads, since
-  the name exists for her to recognise
-
-#### Scenario: Nothing to save yet
-
-- **WHEN** the visitor activates the save control before anything has been converted
-- **THEN** the page says there is nothing to save, and does not mark the file control
-  invalid or move her into it: what is missing is a conversion, not a correction
-
-#### Scenario: Discoverable before it is needed
-
-- **WHEN** a visitor moves through the page by keyboard before converting anything
-- **THEN** she reaches the save control and hears that it exists, because it is marked
-  disabled rather than removed from the page or from the tab order
-
-#### Scenario: Saving twice is answered twice
-
-- **WHEN** the visitor saves the text and then saves it again without converting
-  anything in between
-- **THEN** both saves happen and both are announced, because the second one happened
-  just as much as the first
-
-#### Scenario: A sheet she closes is not a failure
-
-- **WHEN** the file is handed to the share sheet and the visitor closes it without
-  choosing a destination
-- **THEN** nothing is announced as a failure, because backing out on purpose is not an
-  error and reporting one would tell her something went wrong when nothing did
-
-#### Scenario: A sheet already standing
-
-- **WHEN** the save control is pressed while a sheet from an earlier press is still
-  open and unanswered
-- **THEN** nothing is announced, because the outcome she is waiting for has not
-  happened yet; and a sheet whose outcome never arrives SHALL NOT leave the control
-  unable to try again
-
-#### Scenario: Neither branch, and nothing hidden
-
-- **WHEN** the browser will neither write the file from a link nor take it into a
-  sheet, or the attempt fails
-- **THEN** the live region says the text could not be saved and names the result on
-  the page as the way to take it manually, rather than the control failing silently
-
-#### Scenario: Leaving is not interrupted
-
-- **WHEN** the visitor reloads the page or navigates away after converting a game
-- **THEN** nothing asks her to confirm, because the game came from a file she still
-  has and the text was hers to save
-
-#### Scenario: The text is not sent anywhere
-
-- **WHEN** the file is saved
-- **THEN** the page issues no network request carrying the converted text, so saving
-  keeps the promise the conversion already makes
-
-### Requirement: Conversion stays in the browser
-
-The page SHALL convert entirely in the browser and SHALL NOT transmit the game to
-any server, so that unpublished games remain private.
-
-#### Scenario: No network traffic
-
-- **WHEN** a game is converted
-- **THEN** the page issues no network request carrying the game data
-
-### Requirement: The page asks nothing of a third party
-
-Every subresource the page loads SHALL come from the origin serving the page. The
-page SHALL NOT request a stylesheet, script, font or image from anyone else.
-
-The privacy requirement elsewhere in this spec forbids requests carrying game data,
-which a webfont does not carry. This requirement is stricter on purpose: the footer
-tells the visitor the game never leaves the browser, and a visitor cannot audit
-that claim. It holds only while the page asks nobody for anything — a font
-stylesheet from another host would hand that host an address and a timestamp for
-every reader of the page.
-
-#### Scenario: A font is served from the page's own origin
-
-- **WHEN** the page needs a typeface it does not assume the system has
-- **THEN** the file is served from this origin, and no request is made to a font
-  host or a CDN
-
-#### Scenario: Reading a game offline
-
-- **WHEN** a visitor opens the page and converts a game with no network available
-  after the first load
-- **THEN** the conversion works and the page is drawn as designed, because nothing
-  it needs lives elsewhere
-
 ### Requirement: Rendering the result safely
 
 The page SHALL insert converted text as text content only, and SHALL mark the result
@@ -451,67 +454,6 @@ as text that must not be machine translated.
 - **WHEN** a browser or extension translates the page
 - **THEN** the converted text is left exactly as it is, because a coordinate put
   through a translator names a point that is not the one that was played
-
-### Requirement: Page metadata in the chosen language
-
-The page SHALL present its document title, document language, description and
-link-preview metadata in the resolved language, and SHALL update all of them when
-the language changes without reloading the page.
-
-#### Scenario: Metadata matches the language on arrival
-
-- **WHEN** the page opens with Russian resolved
-- **THEN** the document title, the `description` metadata and the link-preview
-  metadata are all Russian, and none of them is left holding the English wording
-  the document was served with
-
-#### Scenario: Metadata follows a switch
-
-- **WHEN** a visitor changes the language while the page is open
-- **THEN** the title, the `description` and the link-preview metadata are rewritten
-  in the newly chosen language, in both directions — switching back to the served
-  language restores its wording rather than leaving the other language in place
-
-#### Scenario: Screen reader speaks in the matching voice
-
-- **WHEN** a language is resolved
-- **THEN** the document's language attribute is set to it, so the screen reader
-  reads the page with a speech synthesiser for that language rather than sounding
-  out one language's words with another language's phonemes
-
-#### Scenario: Title announced on load is translated
-
-- **WHEN** a visitor opens the page with Russian resolved and their screen reader
-  announces the document title
-- **THEN** what it announces is the Russian title
-
-#### Scenario: Translations declared to search engines
-
-- **WHEN** a search engine indexes either language of the page
-- **THEN** it finds a canonical address for the page and an alternate address per
-  language, including a default for visitors whose language is not among them, so
-  the two versions read as translations of one page rather than as duplicates
-
-#### Scenario: Metadata is complete without JavaScript
-
-- **WHEN** a crawler that does not execute JavaScript fetches the page
-- **THEN** the served HTML already carries a full set of metadata in English —
-  never an empty, placeholder or partially filled set — accepting that such a
-  crawler cannot be served a translated one
-
-#### Scenario: The served document speaks one language
-
-- **WHEN** the HTML is read exactly as delivered, before any script runs
-- **THEN** its metadata, its language attribute and its visible text all name and
-  use the same language, so a crawler is given one language signal rather than two
-  contradictory ones, and a screen reader reading the page before JavaScript runs
-  does not sound out one language's words with another language's phonemes
-
-#### Scenario: The language control opens on the served language
-
-- **WHEN** the page is delivered and the language control has not been touched
-- **THEN** the option it shows as selected is the language the document was served
-  in, so the control never claims a language the page is not currently in
 
 ### Requirement: The language control describes the page
 
@@ -562,152 +504,6 @@ absent.
 - **THEN** the words the heading carries beside the tool's name are translated, and
   the name itself and the mark drawn inside it are left intact
 
-### Requirement: The address carries the language it is showing
-
-The page SHALL reflect the resolved language in the URL as soon as it resolves it,
-not only when the control is used, so that the address a visitor can copy opens in
-the language they were looking at.
-
-#### Scenario: Arriving on the bare URL with a remembered language
-
-- **WHEN** a visitor whose cookie records Russian opens the page with no `lang`
-  parameter
-- **THEN** the address becomes the one naming Russian, so copying it hands someone
-  else the page as it was seen rather than as their own cookie would render it, and
-  the canonical address agrees with the address bar
-
-### Requirement: Remembering the chosen language
-
-The page SHALL remember the resolved language in a cookie that outlives the browser
-session, so that a blind visitor operates the language control once rather than
-once per visit.
-
-#### Scenario: Choice survives to the next visit
-
-- **WHEN** a visitor selects Russian, closes the browser, and later opens the page
-  with no `lang` parameter
-- **THEN** the page is in Russian, without the language control having to be found
-  and operated again — the cookie is the only thing standing between her and an
-  English page, since nothing else about her is consulted
-
-#### Scenario: A shared link becomes the remembered choice
-
-- **WHEN** a visitor arrives through a URL carrying `lang=ru`
-- **THEN** Russian is recorded as the remembered language, so their next visit
-  without the parameter is also Russian
-
-#### Scenario: The cookie carries only a language
-
-- **WHEN** the cookie is written
-- **THEN** its value is a language tag and nothing else — no game record, no file
-  name, no identifier — so the page's promise that a game never leaves the browser
-  continues to hold
-
-#### Scenario: Cookies unavailable
-
-- **WHEN** the browser blocks cookies, or reading them raises an error
-- **THEN** the page still resolves a language and works in full — English unless the
-  URL names another — and nothing is reported to the visitor about a preference that
-  could not be stored
-
-#### Scenario: Unrecognised stored value
-
-- **WHEN** the cookie holds a value that is not a supported language
-- **THEN** it is passed over as though absent, rather than leaving the page
-  untranslated or failing to start
-
-### Requirement: The served document names where the page lives
-
-The served HTML SHALL give its canonical address, its `og:url` and every language
-alternate on the host the page is published at, over `https`, so that a reader who
-runs no JavaScript is handed the address that serves the page rather than one that
-redirects to it.
-
-This requirement is about the addresses baked into the document, not the ones the
-page computes at runtime. A visitor running JavaScript already gets correct
-addresses, rebuilt from `location`. Crawlers and messenger link previews execute
-no JavaScript, so for them the baked-in values are the only values there are.
-
-#### Scenario: A link pasted into a chat
-
-- **WHEN** someone pastes the page's address into a messenger and the preview reads
-  the served HTML without running JavaScript
-- **THEN** the address it shows is the live one, so following it reaches the page
-  in one hop instead of through a redirect
-
-#### Scenario: A redirecting address is never the canonical one
-
-- **WHEN** the served document declares a canonical address
-- **THEN** that address answers with the page rather than with a redirect to
-  somewhere else, because a canonical link pointing at a redirect gives a search
-  engine two contradictory answers about where the page lives
-
-#### Scenario: Every alternate names the live host
-
-- **WHEN** the served document lists its language alternates and its `x-default`
-- **THEN** each one names the live host, so no language of the page is advertised
-  at an address that bounces
-
-#### Scenario: The old address keeps resolving
-
-- **WHEN** someone follows a link to the previous address, sent before this change
-- **THEN** they still reach the page, because links already sitting in other
-  people's chat histories must not stop working
-
-### Requirement: The repository records its published address
-
-The repository SHALL hold the address the page is published at in a file under
-version control, and the deploy SHALL publish that file with the page. A test SHALL
-assert the served document agrees with it.
-
-The address is currently visible only in the hosting provider's settings, which no
-test, no type check and no reviewer reading the repository can see. Recording it
-turns "where does this live" from a question you answer by following a redirect
-into one you answer by opening a file.
-
-#### Scenario: Moving the page is one edit plus a failing test
-
-- **WHEN** someone changes the recorded address without updating the served
-  document
-- **THEN** the test fails and names both values, so a move cannot be left
-  half-finished
-
-#### Scenario: The former address is gone from the document
-
-- **WHEN** the served document is read after a move
-- **THEN** no address in it names the previous host, so an overlooked literal
-  cannot keep advertising an address the page no longer answers on
-
-#### Scenario: The recorded address is a bare hostname
-
-- **WHEN** the recorded address is read
-- **THEN** it is a hostname with no scheme, no path and no trailing slash, so the
-  file stays the single thing the hosting provider also reads it as
-
-### Requirement: The published site is reachable only over https
-
-The published site SHALL answer over `https`, and a plain `http` request SHALL
-redirect to it, carrying any query string intact.
-
-The language cookie is written with `Secure`, so a browser stores it only on a
-secure origin. A visitor who arrives over `http` is therefore shown the language
-the link names and has it forgotten by the time they return, with nothing reported
-to them — the page cannot tell the difference between a cookie it failed to store
-and a cookie that was never there.
-
-#### Scenario: The remembered language survives a link from a chat
-
-- **WHEN** a visitor follows a link naming a language, from any address the site
-  answers on, including one that redirects
-- **THEN** the last hop of that journey is `https`, so the cookie is stored and the
-  language is still there on the next visit
-
-#### Scenario: A redirect keeps the language it was given
-
-- **WHEN** an address that redirects is followed with a `lang` parameter
-- **THEN** the parameter survives to the destination, so the language a sender
-  chose is the language the recipient sees
-
 ### Requirement: The page can be kept as an icon
 
 The page SHALL ship a web app manifest, an `apple-touch-icon` and a favicon, all
@@ -749,89 +545,6 @@ removed those would be trading her tools for the appearance of an app.
 - **WHEN** a visitor opens the page from its home screen icon
 - **THEN** it opens in the browser with the browser's own controls available, so
   nothing she uses to read, share or leave a web page is missing
-
-### Requirement: The home screen name follows the chosen language
-
-The name offered for the home screen icon SHALL be in the language the page is
-being read in, and SHALL be updated when the language changes, like the document
-title already is.
-
-An icon is added once and then read every day. Getting a Russian reader's icon
-named in English would leave her home screen holding one English label among her
-own language, announced in English phonemes by a Russian voice.
-
-Every source the platform may read that name from SHALL carry the chosen language,
-not merely the one the page happens to write at runtime. A manifest is a static file
-and cannot follow a control, so a single manifest would name the icon in whichever
-language it was written in — and where the platform prefers the manifest to the
-document's own tag, that name is the one she gets. Which of the two wins is not the
-page's decision to make, so neither source is left holding the wrong answer.
-
-#### Scenario: Added while reading Russian
-
-- **WHEN** a visitor switches the page to Russian and then adds it to their home
-  screen
-- **THEN** the name offered for the icon is the Russian one
-
-#### Scenario: The name follows a switch
-
-- **WHEN** a visitor changes the language while the page is open
-- **THEN** the name that would be offered for the icon is rewritten in the newly
-  chosen language, in both directions, rather than keeping the language the document
-  was served in
-
-#### Scenario: Both sources of the name agree
-
-- **WHEN** a visitor reading the page in Russian adds it to their home screen, in a
-  platform that takes the name from the manifest rather than from the document's own
-  tag
-- **THEN** the manifest in force is the Russian one, so the icon is named in Russian
-  whichever of the two sources the platform prefers
-
-#### Scenario: A manifest for every language offered
-
-- **WHEN** the page offers a language in its language control
-- **THEN** a manifest exists for that language and is published, so no choice of
-  language can leave the icon naming itself from a file that is not there
-
-### Requirement: The credit stays on the page without being read out
-
-The promise that the file never leaves the browser, and the credit naming the Japan
-Go Association for the Visually Impaired with the link to this page's source, SHALL
-remain visible on the page and SHALL be hidden from assistive technology.
-
-Every link inside them SHALL leave the tab order with them. Text hidden from a screen
-reader while still focusable is worse than either state alone: a keyboard user reaches
-a control the screen reader cannot name, which is a control announced as nothing at
-all.
-
-Both SHALL continue to follow the chosen language. They are still on screen, and a
-visible paragraph left in a language the page is not in is wrong whoever is reading
-it.
-
-#### Scenario: Read by eye, not by voice
-
-- **WHEN** a screen reader reads the page from top to bottom
-- **THEN** neither paragraph is announced, so the visitor is not made to sit through
-  them on every visit
-
-#### Scenario: The credit is still published
-
-- **WHEN** anyone looks at the page
-- **THEN** the promise, the credit to the Japan Go Association for the Visually
-  Impaired and the link to the source are there to be read, so where the idea and the
-  code come from stays on the page rather than only in its markup
-
-#### Scenario: No focusable text without a name
-
-- **WHEN** a keyboard user moves through the page to its end
-- **THEN** neither link inside the hidden paragraphs takes focus
-
-#### Scenario: Hidden but translated
-
-- **WHEN** the language changes
-- **THEN** both paragraphs are rewritten in the newly chosen language, like every
-  other visible string on the page
 
 ### Requirement: A message describes only what it is about
 
@@ -914,48 +627,6 @@ sentence saying why, and a screen reader announces a problem it cannot explain.
   with the file, because pressing save never examined it and so cannot be the reason
   its explanation disappears
 
-### Requirement: Every asset the document names is published
-
-The deploy SHALL publish every file the served document references, every file a
-manifest references, and every manifest the page can put in force, and a test SHALL
-assert that it does by reading those references rather than a list maintained beside
-them.
-
-The deploy enumerates what it copies. A new kind of asset therefore ships only if
-someone remembers to name it there, and a forgotten one fails quietly: the page
-still loads, the icon is simply absent, and the visitor least able to notice a
-missing icon is the one this page is for.
-
-Reading the document alone is not enough once a file is reached only at runtime. The
-manifest for the language that was not served is named by no tag in the document, and
-an icon may be named by a manifest and by nothing else — so a sweep of the document
-would report both as nobody's business and let them ship as a 404.
-
-#### Scenario: A referenced file that the deploy would not copy
-
-- **WHEN** the document references a file the deploy does not publish
-- **THEN** the test fails and names the file, so the omission is found in the build
-  rather than as a 404 on the live page
-
-#### Scenario: The manifest and the icons reach the published site
-
-- **WHEN** the site is assembled for publishing
-- **THEN** the manifest and every icon the document names are among the published
-  files
-
-#### Scenario: A file named only by a manifest
-
-- **WHEN** a manifest names an icon that the document itself never references
-- **THEN** the test still requires it to be published, because the manifest is served
-  to the same visitor and a 404 beneath it is no less broken
-
-#### Scenario: A manifest reached only by the language control
-
-- **WHEN** the manifest for a language is put in force at runtime rather than named
-  in the served document
-- **THEN** it is still required to be published, because the visitor who switches
-  language is exactly the visitor it exists for
-
 ### Requirement: Every action is answered, including a repeat
 
 Every activation of a control SHALL be answered, and an activation that produces the
@@ -1036,3 +707,61 @@ event that is not happening.
 - **WHEN** the visitor chooses another file after a failure and it converts
 - **THEN** the page states the outcome of that conversion, so clearing the old verdict
   leaves the control described by its own present state rather than by nothing at all
+
+## REMOVED Requirements
+
+### Requirement: Copying the result
+
+**Reason**: A file on her device is the durable version of what the clipboard offered,
+so keeping both would leave two controls for one job — and the clipboard is the one
+that loses the game when the browser closes. The player this page is for asked for the
+control to go once saving arrived.
+
+**Migration**: Saving the converted text as a file replaces it, and is the control the
+page now names whenever the text has to be taken away. A manual copy remains possible
+and is what the page falls back to when saving fails: the result keeps its selectable
+text and its place in the tab order, so it can be reached and selected from the
+keyboard. `copy`, `copied`, `copyFailed` and `emptyResult` leave the string catalogue;
+the sentence about there being nothing to copy is replaced by the save control's own.
+
+### Requirement: Sharing the page
+
+**Reason**: The player this page is for asked for both controls to go. Sharing is a
+page-level action she does not perform from here, and the two controls — one in the
+masthead, one in the footer — were two of the stops she passes through on every visit
+to reach the file control. The browser's own share control still does the job the
+buttons were saving her from hunting for.
+
+**Migration**: Sharing happens through the browser's own share control, which the home
+screen icon requirement already guarantees stays available by opening the page in the
+browser rather than as a standalone window. The strings for the three share outcomes
+leave the catalogue. `web/share.ts` is not deleted but renamed to `web/save.ts`: its
+payload becomes the converted file instead of the page's address, and its outcome
+model — a cancelled sheet and an already-open sheet are silence rather than failure —
+is what the save control's sheet branch requires. This requirement stays in git, so
+bringing the control back is a revert rather than a rewrite.
+
+### Requirement: Telling the visitor how to keep the page
+
+**Reason**: The instruction is four lines of text needed once and read out on every
+visit, and it sat in the footer as a permanent stop in a page being cut down to the
+two things she came for.
+
+**Migration**: The manifest, the icons and the translated icon name all stay, so
+adding the page to a home screen through the browser's own menu still produces an
+icon named in her language. What goes is the paragraph explaining how, and the
+disclosure holding it.
+
+### Requirement: A pasted record is code, and unsaved
+
+**Reason**: Both halves were about a field that no longer exists. Nothing can be
+pasted into the page, so nothing needs marking as text a translator must leave alone
+in the input; and the warning before leaving defended text that existed nowhere else,
+which stopped being true the moment the record began arriving as a file the visitor
+still holds.
+
+**Migration**: The requirement that the game text must not be machine translated moves
+to "Rendering the result safely", where it now covers the converted result. The
+warning before leaving is not replaced but inverted: "Saving the converted text as a
+file" requires that leaving the page is never interrupted, because the text can now be
+saved and the file is still on her device.
