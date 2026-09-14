@@ -30,6 +30,8 @@ jobs:
 
       - run: npm ci
 
+      # The page's own `prebuild` builds the library first: the page bundles the
+      # package's browser build rather than reaching into the library's sources.
       - run: npm run build:web
 
       # Publish only what the page needs. The sources stay in the repository

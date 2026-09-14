@@ -66,6 +66,12 @@ polyfilling machinery nothing executes.
   its browser build
 - **THEN** both produce identical text
 
+#### Scenario: Licences travel with the inlined code
+
+- **WHEN** the browser build is read
+- **THEN** it carries the copyright and permission notice of every third-party
+  package it inlines, in a comment a consumer's bundler preserves
+
 ### Requirement: An honest dependency graph for Node
 
 The Node build SHALL keep its parsing and board dependencies as declared

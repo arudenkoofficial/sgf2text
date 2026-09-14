@@ -60,8 +60,10 @@ the converter can be used from.
   the page's tests move under `web`. Fixtures travel with the tests that read them.
 - `web/main.ts` imports `sgf2text` by name instead of reaching into `../src`. The
   shims in `web/shims` move into the package's browser build.
-- `.github/workflows/ci.yml` runs the workspaces; `.github/workflows/pages.yml`
-  gains a library build before the page build. A new `publish.yml` is added.
+- `.github/workflows/ci.yml` and `.github/workflows/pages.yml` keep their steps:
+  the root scripts now run the workspaces, and the page's own `prebuild` builds the
+  library before the page. A new `publish.yml` is added, with a script that refuses
+  a release whose tag does not name the version being published.
 - `test/published-assets.test.ts` reads `pages.yml` by relative path and follows
   its move.
 - The README splits: the package carries the one a consumer reads on npm, the root

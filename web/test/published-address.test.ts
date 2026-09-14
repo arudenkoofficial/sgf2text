@@ -21,12 +21,12 @@ import { fileURLToPath } from 'node:url';
  */
 const path = (relative: string): string => fileURLToPath(new URL(relative, import.meta.url));
 
-const CNAME = path('../CNAME');
+const CNAME = path('../../CNAME');
 
 const recorded = existsSync(CNAME) ? readFileSync(CNAME, 'utf8') : null;
 const host = recorded?.trimEnd() ?? null;
 
-const html = readFileSync(path('../web/index.html'), 'utf8');
+const html = readFileSync(path('../index.html'), 'utf8');
 
 /** The host the page was published at before it had a domain of its own. */
 const FORMER_HOST = 'arudenkoofficial.github.io';

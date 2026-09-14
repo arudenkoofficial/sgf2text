@@ -11,7 +11,7 @@
  * the page had nothing to say about the game, and said it anyway.
  */
 
-import type { SgfDocument } from '../src/index.ts';
+import type { SgfDocument } from 'sgf2text';
 import type { UiStrings } from './ui-strings.ts';
 
 export type Tone = 'info' | 'error';

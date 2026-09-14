@@ -9,13 +9,13 @@ import {
   reconvertsOnLanguageChange,
   staleRegions,
   survivesRestatement,
-} from '../web/announcement.ts';
-import type { Destination, Subject, Tone } from '../web/announcement.ts';
-import { SUPPORTED_LANGUAGES, stringsFor } from '../web/ui-strings.ts';
-import { sgfToDocument } from '../src/index.ts';
+} from '../announcement.ts';
+import type { Destination, Subject, Tone } from '../announcement.ts';
+import { SUPPORTED_LANGUAGES, stringsFor } from '../ui-strings.ts';
+import { sgfToDocument } from 'sgf2text';
 
 const fixture = (name: string): string =>
-  readFileSync(new URL(`../test/fixtures/${name}`, import.meta.url), 'utf8');
+  readFileSync(new URL(`../../packages/sgf2text/test/fixtures/${name}`, import.meta.url), 'utf8');
 
 /**
  * A message on this page carries two facts: how it is drawn, and what it is about. From

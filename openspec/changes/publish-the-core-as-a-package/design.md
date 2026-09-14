@@ -57,25 +57,29 @@ correctly and no declaration depends on `@types/node`.
 
 ### The repository becomes an npm workspace, with the library in a package of its own
 
-`packages/sgf2text` holds `src`, `types`, `cli.ts` and the library's tests. `web`
-becomes a private workspace package owning `esbuild` and the page's tests. The root
-becomes `private: true`.
+`packages/sgf2text` holds `src`, `types`, `cli.ts`, its build scripts and the
+library's tests. `web` becomes a private workspace package owning the page's tests
+and depending on the library by name. The library declares `esbuild` itself, since
+its browser build needs it. The root becomes `private: true`.
 
 The alternative was to keep one package at the root and leave `web` as a plain
 folder, which is less movement and equally correct about the tarball. It was
-rejected for two reasons. The page's build dependency would stay in the published
-package's `devDependencies`, which makes the boundary a matter of memory rather
-than structure; and `private: true` on a workspace root is a mechanical guarantee
-that the wrong thing cannot be published, which no amount of care in `files` gives.
+rejected for two reasons. The page's modules, tests and build would stay mixed into
+the published package's directory and manifest, which makes the boundary a matter
+of memory rather than structure; and `private: true` on a workspace root is a
+mechanical guarantee that the wrong thing cannot be published, which no amount of
+care in `files` gives.
 
 Two published packages, splitting the command line out, was rejected: it doubles
 the release ceremony for a tool that has no audience outside this repository.
 
 ### The page consumes the package by name, through its built output
 
-`web/main.ts` imports `sgf2text` rather than `../src/index.ts`; npm links the
-workspace, and `exports` routes the import to the built browser bundle. A
-`prebuild:web` step builds the library first, so the ordering cannot be forgotten.
+The page's modules import `sgf2text` rather than a path into the library's
+sources; npm links the workspace, and `exports` routes the import to the built
+browser bundle. The page's own `prebuild` hook builds the library first, and root
+`pretest` and `pretypecheck` hooks do the same for every command that reads the
+built package, so the ordering cannot be forgotten.
 
 The alternative was a `source` condition in `exports` pointing at `src/index.ts`,
 letting esbuild read TypeScript directly and skipping `tsc` in the page's build.
@@ -109,6 +113,16 @@ working fallback, so stubbing them is the path the parser itself provides rather
 than a patch against it. `fs` is required without a guard but only dereferenced
 inside `parseFile`, so an empty object is safe and a future version that touches it
 at load time would fail loudly.
+
+Stubbing the Node modules does not leave the bundle free of anyone else's code. It
+inlines `@sabaki/sgf`, `@sabaki/go-board` and `doken`, all MIT, and MIT asks that
+their copyright and permission notice travel with every copy. The build therefore
+reads which packages it inlined from esbuild's metafile and prefixes the bundle with
+each one's licence in a `/*! … */` comment. A notice kept in a separate file would
+stay behind in the tarball; a legal comment is carried by the consumer's own bundler
+into the application, which is where the code actually ends up. Deriving the list
+from the metafile rather than naming the three packages means a dependency added
+later cannot ship without its notice.
 
 Bundling everything for every environment, leaving the package with no runtime
 dependencies at all, was the main alternative. It is simpler to reason about and
@@ -163,8 +177,8 @@ built a given version.
   entry and through the browser bundle and asserts the two texts are identical. It
   fails the moment a stub changes an outcome.
 - **The page could be built against a stale `dist` and pass CI while the sources
-  are broken.** → `prebuild:web` rebuilds the library; CI runs a clean checkout, so
-  there is no stale output to inherit.
+  are broken.** → The page's `prebuild` hook rebuilds the library; CI runs a clean
+  checkout, so there is no stale output to inherit.
 - **A future version of `@sabaki/sgf` could use `fs` at module load, breaking the
   browser build.** → The stub is an empty object, so such a version throws at load
   rather than misbehaving quietly, and the browser conversion test catches it in CI

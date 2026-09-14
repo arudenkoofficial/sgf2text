@@ -1,0 +1,45 @@
+{
+  "name": "sgf2text",
+  "version": "0.1.0",
+  "description": "Convert SGF Go game records into screen-reader friendly text",
+  "keywords": [
+    "sgf",
+    "go",
+    "baduk",
+    "weiqi",
+    "accessibility",
+    "screen-reader"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arudenkoofficial/sgf2text.git",
+    "directory": "packages/sgf2text"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "browser": "./dist/browser/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --project tsconfig.build.json && node scripts/build-browser.ts"
+  },
+  "dependencies": {
+    "@sabaki/go-board": "^1.4.3",
+    "@sabaki/sgf": "^3.5.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

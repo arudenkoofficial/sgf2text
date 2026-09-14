@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@sabaki/go-board": ["./types/sabaki-go-board.d.ts"],
+      "@sabaki/sgf": ["./types/sabaki-sgf.d.ts"]
+    }
+  },
+  "include": ["src", "test", "types", "scripts", "cli.ts"]
+}

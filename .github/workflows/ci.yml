@@ -27,8 +27,10 @@ jobs:
 
       - run: npm ci
 
-      # Tests run against the TypeScript sources directly, so a construct Node
-      # cannot strip fails here rather than at someone's runtime.
+      # The library's tests run against its TypeScript sources directly, so a
+      # construct Node cannot strip fails here rather than at someone's runtime.
+      # The page's tests, and the ones reaching the package by name, run against the
+      # built package, which `pretest` builds first.
       - run: npm test
 
       - run: npm run typecheck

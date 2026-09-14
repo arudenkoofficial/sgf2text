@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, UI } from '../web/ui-strings.ts';
+import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, UI } from '../ui-strings.ts';
 
 /**
  * The served document is the one thing nobody sees by accident any more: a
@@ -10,7 +10,7 @@ import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, UI } from '../web/ui-strings.ts'
  * the audience it is actually for — a crawler that runs no JavaScript — cannot
  * complain. These assertions are the only thing watching it.
  */
-const html = readFileSync(fileURLToPath(new URL('../web/index.html', import.meta.url)), 'utf8');
+const html = readFileSync(fileURLToPath(new URL('../index.html', import.meta.url)), 'utf8');
 
 const served = UI[DEFAULT_LANGUAGE];
 assert.ok(served !== undefined, 'the served language is in the catalogue');
@@ -390,7 +390,7 @@ test('the language control opens on the served language', () => {
  * `#lang`, `#input-heading` and the rest passed the whole suite. Read out of `main.ts`
  * rather than listed here, so the check cannot fall behind the code it is checking.
  */
-const SELECTORS = [...readFileSync(fileURLToPath(new URL('../web/main.ts', import.meta.url)), 'utf8')
+const SELECTORS = [...readFileSync(fileURLToPath(new URL('../main.ts', import.meta.url)), 'utf8')
   .matchAll(/need(?:<[^>]*>)?\(\s*'([^']+)'/g)]
   .map((match) => match[1] ?? '');
 
@@ -481,7 +481,7 @@ test('nothing interrupts her when she leaves', () => {
   // and a confirmation dialogue is an especially bad thing to leave standing for someone
   // who navigates by keyboard and sound. Asserted at text level because `main.ts` is the
   // one module `node --test` cannot import.
-  const main = readFileSync(fileURLToPath(new URL('../web/main.ts', import.meta.url)), 'utf8');
+  const main = readFileSync(fileURLToPath(new URL('../main.ts', import.meta.url)), 'utf8');
 
   assert.doesNotMatch(main, /beforeunload/, 'the page asks the browser to confirm nothing');
 });

@@ -1,47 +1,23 @@
 {
-  "name": "sgf2text",
-  "version": "0.1.0",
-  "description": "Convert SGF Go game records into screen-reader friendly text",
-  "keywords": [
-    "sgf",
-    "go",
-    "baduk",
-    "weiqi",
-    "accessibility",
-    "screen-reader"
-  ],
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/arudenkoofficial/sgf2text.git"
-  },
+  "name": "sgf2text-repository",
+  "private": true,
   "type": "module",
-  "engines": {
-    "node": ">=24"
-  },
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    }
-  },
-  "files": [
-    "dist"
+  "workspaces": [
+    "packages/sgf2text",
+    "web"
   ],
   "scripts": {
+    "pretest": "npm run build",
     "test": "node --test",
-    "typecheck": "tsc --noEmit",
-    "build": "tsc --project tsconfig.build.json",
-    "typecheck:web": "tsc --noEmit --project web/tsconfig.json",
-    "build:web": "esbuild web/main.ts --bundle --format=esm --minify --alias:fs=./web/shims/node-empty.js --alias:buffer=./web/shims/node-empty.js --alias:string_decoder=./web/shims/node-empty.js --alias:iconv-lite=./web/shims/node-empty.js --alias:jschardet=./web/shims/node-empty.js --outfile=web/dist/main.js"
-  },
-  "dependencies": {
-    "@sabaki/go-board": "^1.4.3",
-    "@sabaki/sgf": "^3.5.0"
+    "pretypecheck": "npm run build",
+    "typecheck": "tsc --noEmit && npm run typecheck --workspace sgf2text && tsc --noEmit --project web/test",
+    "build": "npm run build --workspace sgf2text",
+    "pretypecheck:web": "npm run build",
+    "typecheck:web": "tsc --noEmit --project web",
+    "build:web": "npm run build --workspace sgf2text-web"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
-    "esbuild": "^0.28.2",
     "typescript": "^7.0.2"
   },
   "allowScripts": {

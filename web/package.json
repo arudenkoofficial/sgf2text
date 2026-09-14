@@ -1,0 +1,19 @@
+{
+  "name": "sgf2text-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "pretest": "npm run build --workspace sgf2text",
+    "test": "node --test",
+    "pretypecheck": "npm run build --workspace sgf2text",
+    "typecheck": "tsc --noEmit --project test && tsc --noEmit",
+    "prebuild": "npm run build --workspace sgf2text",
+    "build": "esbuild main.ts --bundle --format=esm --minify --outfile=dist/main.js"
+  },
+  "dependencies": {
+    "sgf2text": "*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

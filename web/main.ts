@@ -1,4 +1,4 @@
-import { documentToText, isSgfError, sgfToDocument } from '../src/index.ts';
+import { documentToText, isSgfError, sgfToDocument } from 'sgf2text';
 import {
   conversionMessage,
   destinationFor,

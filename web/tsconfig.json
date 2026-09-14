@@ -1,11 +1,7 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "lib": ["es2024", "dom"],
-    "paths": {
-      "@sabaki/go-board": ["../types/sabaki-go-board.d.ts"],
-      "@sabaki/sgf": ["../types/sabaki-sgf.d.ts"]
-    }
+    "lib": ["es2024", "dom"]
   },
-  "include": [".", "../src", "../types"]
+  "include": ["."]
 }
