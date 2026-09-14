@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, UI, stringsFor } from '../web/ui-strings.ts';
-import type { UiStrings } from '../web/ui-strings.ts';
+import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, UI, stringsFor } from '../ui-strings.ts';
+import type { UiStrings } from '../ui-strings.ts';
 
 const keysOf = (value: object): string[] => Object.keys(value).sort();
 

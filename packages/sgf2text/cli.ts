@@ -5,7 +5,7 @@ import { DEFAULT_LOCALE, LOCALE_IDS, sgfToText } from './src/index.ts';
 const USAGE = `sgf2text — convert an SGF Go file into readable text.
 
 Usage:
-  node cli.ts [options] [file.sgf]
+  node packages/sgf2text/cli.ts [options] [file.sgf]
 
 Reads <file.sgf>, or standard input when no file is given, and writes the
 converted text to standard output. Game records and problems are both read;
@@ -16,10 +16,10 @@ Options:
   --help, -h    Show this message
 
 Examples:
-  node cli.ts game.sgf
-  node cli.ts problem.sgf
-  node cli.ts --lang en game.sgf > game.txt
-  cat game.sgf | node cli.ts
+  node packages/sgf2text/cli.ts game.sgf
+  node packages/sgf2text/cli.ts problem.sgf
+  node packages/sgf2text/cli.ts --lang en game.sgf > game.txt
+  cat game.sgf | node packages/sgf2text/cli.ts
 `;
 
 type Options = {

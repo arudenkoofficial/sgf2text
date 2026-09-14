@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { downloadName, saveTheText } from '../web/save.ts';
-import type { SaveCapabilities } from '../web/save.ts';
+import { downloadName, saveTheText } from '../save.ts';
+import type { SaveCapabilities } from '../save.ts';
 
 /**
  * What the save control does, tested away from the DOM.

@@ -13,11 +13,7 @@
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
     "skipLibCheck": true,
-    "noEmit": true,
-    "paths": {
-      "@sabaki/go-board": ["./types/sabaki-go-board.d.ts"],
-      "@sabaki/sgf": ["./types/sabaki-sgf.d.ts"]
-    }
+    "noEmit": true
   },
-  "include": ["src", "test", "types", "cli.ts"]
+  "include": ["test"]
 }

@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { manifestAddress } from '../web/metadata.ts';
-import { SUPPORTED_LANGUAGES } from '../web/ui-strings.ts';
+import { manifestAddress } from '../metadata.ts';
+import { SUPPORTED_LANGUAGES } from '../ui-strings.ts';
 
 /**
  * Whether the deploy publishes everything the document asks for.
@@ -19,8 +19,8 @@ import { SUPPORTED_LANGUAGES } from '../web/ui-strings.ts';
  */
 const path = (relative: string): string => fileURLToPath(new URL(relative, import.meta.url));
 
-const html = readFileSync(path('../web/index.html'), 'utf8');
-const workflow = readFileSync(path('../.github/workflows/pages.yml'), 'utf8');
+const html = readFileSync(path('../index.html'), 'utf8');
+const workflow = readFileSync(path('../../.github/workflows/pages.yml'), 'utf8');
 
 /**
  * Every subresource the document names, from wherever it names it: `href`, `src`,
@@ -65,7 +65,7 @@ const references = (): string[] => {
     const address = manifestAddress(language);
     add(address);
 
-    const manifest = readFileSync(path(`../web/${address}`), 'utf8');
+    const manifest = readFileSync(path(`../${address}`), 'utf8');
     for (const { src } of (JSON.parse(manifest) as { icons?: { src: string }[] }).icons ?? []) {
       add(src);
     }
@@ -179,7 +179,7 @@ test('every file the document references exists in the sources', () => {
     }
 
     assert.ok(
-      existsSync(path(`../web/${reference}`)),
+      existsSync(path(`../${reference}`)),
       `web/${reference} exists — the document names it`,
     );
   }

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { alternateLinks, canonicalUrl } from '../web/metadata.ts';
+import { alternateLinks, canonicalUrl } from '../metadata.ts';
 
 const SUPPORTED = ['en', 'ru'] as const;
 const base = new URL('https://arudenkoofficial.github.io/sgf2text/');

@@ -5,7 +5,7 @@ import {
   languageCookie,
   readCookie,
   resolveLanguage,
-} from '../web/language.ts';
+} from '../language.ts';
 
 const SUPPORTED = ['en', 'ru'] as const;
 

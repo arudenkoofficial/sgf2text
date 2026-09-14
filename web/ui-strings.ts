@@ -1,4 +1,4 @@
-import type { LocaleId, SgfErrorCode } from '../src/index.ts';
+import type { LocaleId, SgfErrorCode } from 'sgf2text';
 
 /**
  * The page's own labels. Kept apart from the library's locales, which describe

@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { manifestAddress } from '../web/metadata.ts';
-import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, UI } from '../web/ui-strings.ts';
+import { manifestAddress } from '../metadata.ts';
+import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, UI } from '../ui-strings.ts';
 
 /**
  * The manifests are read by nobody who can complain. A visitor sees their effects only
@@ -17,7 +17,7 @@ import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, UI } from '../web/ui-strings.ts'
  */
 const path = (relative: string): string => fileURLToPath(new URL(relative, import.meta.url));
 
-const html = readFileSync(path('../web/index.html'), 'utf8');
+const html = readFileSync(path('../index.html'), 'utf8');
 
 const served = UI[DEFAULT_LANGUAGE];
 assert.ok(served !== undefined);
@@ -36,7 +36,7 @@ type Manifest = {
   scope?: string;
 };
 
-const file = (language: string): string => path(`../web/${manifestAddress(language)}`);
+const file = (language: string): string => path(`../${manifestAddress(language)}`);
 
 const source = (language: string): string | null =>
   existsSync(file(language)) ? readFileSync(file(language), 'utf8') : null;
@@ -149,7 +149,7 @@ test('every icon the manifests name exists on disk', () => {
   // one this page is for.
   for (const language of SUPPORTED_LANGUAGES) {
     for (const icon of manifestFor(language).icons ?? []) {
-      assert.ok(existsSync(path(`../web/${icon.src}`)), `${icon.src} exists`);
+      assert.ok(existsSync(path(`../${icon.src}`)), `${icon.src} exists`);
     }
   }
 });
@@ -165,7 +165,7 @@ test('the apple-touch-icon exists, since iOS accepts no SVG there', () => {
   const href = /<link rel="apple-touch-icon"[^>]*href="([^"]+)"/.exec(html)?.[1];
 
   assert.ok(href !== undefined, 'the document names one');
-  assert.ok(existsSync(path(`../web/${href}`)), `${href} exists`);
+  assert.ok(existsSync(path(`../${href}`)), `${href} exists`);
   assert.match(href, /\.png$/, 'a PNG: iOS ignores an SVG in this slot');
 });
 

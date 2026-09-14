@@ -74,17 +74,28 @@ known to be a problem.
 
 ### Command line
 
+The command line is a tool of this repository and is not part of the published
+package. From the repository root:
+
 ```sh
-node cli.ts game.sgf                  # convert a file
-node cli.ts --lang en game.sgf        # choose the language
-cat game.sgf | node cli.ts            # or read from standard input
-node cli.ts --help
+node packages/sgf2text/cli.ts game.sgf            # convert a file
+node packages/sgf2text/cli.ts --lang en game.sgf  # choose the language
+cat game.sgf | node packages/sgf2text/cli.ts      # or read from standard input
+node packages/sgf2text/cli.ts --help
 ```
 
 Errors go to standard error, and the converter writes nothing partial to standard
 output, so redirecting into a file leaves either a whole game or nothing.
 
 ### Library
+
+```sh
+npm install sgf2text
+```
+
+The package works in Node and in the browser alike. A bundler building for the
+browser picks a build of its own through the `browser` condition of `exports`, so
+there is nothing to configure. npm shows [the package's own README](packages/sgf2text/README.md).
 
 ```js
 import { sgfToText, sgfToRecord, sgfToDocument } from 'sgf2text';
@@ -204,23 +215,41 @@ group. A move with no liberty of its own still captures.
 
 ## Development
 
-Requires Node 24 or newer; developed on the version in `.nvmrc`. Node runs the
-TypeScript sources as they are, so nothing needs compiling while you work.
+Requires Node 24 or newer; developed on the version in `.nvmrc`.
+
+The repository is an npm workspace. `packages/sgf2text` is the published library,
+with its command line and its tests; `web` is the page, which is private and
+consumes the library by name, exactly as another project would. The root is
+private too, so nothing but the library can reach the registry.
 
 ```sh
 npm install
-npm test              # node --test
-npm run typecheck     # the library, and the web modules without the dom lib
+npm test              # node --test, across the root, the library and the page
+npm run typecheck     # the library, and the page's modules without the dom lib
 npm run typecheck:web # the page's DOM wiring, with the dom lib
-npm run build         # emit dist/ for publishing
-npm run build:web     # bundle web/dist/main.js for the page
+npm run build         # the library: dist/ for Node, dist/browser/ for bundlers
+npm run build:web     # the page: web/dist/main.js
 ```
 
-Both typechecks matter, and they check different things. `web/language.ts`,
-`web/metadata.ts` and `web/ui-strings.ts` reach `npm run typecheck` through the
-tests that import them, where `lib` carries no `dom`. A stray `document` in one of
-them fails that build, which is what keeps the language logic testable without a
-browser.
+The library's tests run its TypeScript sources as they are. The page's tests, and
+the ones that import the package by name, read the built package instead, so every
+command that needs it builds the library first and nothing has to be compiled by
+hand.
+
+Both typechecks matter, and they check different things. The page's modules that
+its tests import, such as `web/language.ts`, `web/metadata.ts` and
+`web/ui-strings.ts`, are checked through `web/test`, where `lib` carries no `dom`.
+A stray `document` in one of them fails that build, which is what keeps the
+language logic testable without a browser.
+
+### Releasing
+
+Publishing a release on GitHub runs `.github/workflows/publish.yml`. It tests and
+builds, checks that the tag names the version in `packages/sgf2text/package.json`,
+and publishes the library with provenance. It authenticates as this repository
+through npm's trusted publishing, so no token is stored anywhere. npm trusts a
+publisher only for a package that already exists, so the very first version is
+published by hand.
 
 Use only erasable TypeScript syntax: no `enum`, no `namespace`, no constructor
 parameter properties. Node strips types rather than transforming them, and
