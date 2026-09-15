@@ -143,6 +143,16 @@ only. `exports` lists `types` once, above the conditions, so both environments s
 the same interface. This is sound because the two builds differ in how a dependency
 is packaged, never in what this library exports.
 
+The package ships no source maps. `tsc` only strips types here, so `dist/*.js`
+reads as the source without its annotations and needs no map to be followed. A map
+pointing at `src` would lead a consumer's debugger or editor to a file the tarball
+does not carry. Inlining the sources into each map makes the maps work, and was
+measured at nearly four times the size of the JavaScript, paid by everyone who
+imports the package for the few who would step into it. Because `tsc` never removes
+what an earlier build wrote, the library's build starts from an empty `dist`, so no
+leftover map, and no file from a source since deleted, reaches a tarball packed on
+a maintainer's machine.
+
 ### Release by trusted publishing on a GitHub release
 
 A `publish.yml` workflow runs on a published release: install, test, build, then

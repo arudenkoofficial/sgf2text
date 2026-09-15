@@ -22,6 +22,13 @@ holds the built interface and nothing that happens to live beside it.
 - **THEN** no file from the page, no test, no fixture, no `.ts` source and no
   command-line entry point appears in the list
 
+#### Scenario: No map leads to a missing source
+
+- **WHEN** the package is packed, including from a checkout that has been built
+  before
+- **THEN** no source map appears in the list, since the sources a map would lead to
+  are not published
+
 ### Requirement: The public interface
 
 The package SHALL expose what `src/index.ts` exports, under the package name, with

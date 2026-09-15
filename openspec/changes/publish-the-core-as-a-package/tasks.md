@@ -11,6 +11,8 @@
 - [x] 2.1 Write a failing test that packs the library package and asserts the file list: the built output, its declarations, `package.json`, the README and the licence, and nothing else — no source, no test, no fixture, no command line, no page.
 - [x] 2.2 Set `files`, `exports`, `engines` and the metadata on the library package, with `repository` keeping the repository URL and adding `"directory": "packages/sgf2text"`, since npm matches trusted publishing against it. Place the package's own README and a copy of the licence inside the package directory, since npm takes both from there rather than from the repository root.
 - [x] 2.3 Write a failing test that imports the package by name rather than by path and converts a fixture, proving `exports` resolves through the workspace link.
+- [x] 2.4 Write a failing test asserting that no source map is packed, including maps an earlier build left in `dist`.
+- [x] 2.5 Stop emitting source and declaration maps, and make the library's build start from an empty `dist`, since `tsc` never removes what an earlier build wrote.
 
 ## 3. The browser build
 
