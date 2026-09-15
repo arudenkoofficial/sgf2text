@@ -43,3 +43,14 @@ test('nothing but the built output and its description is packed', () => {
 
   assert.deepEqual(stray, []);
 });
+
+// A source map leads from built code back to the source it came from, and the
+// sources are not published. A map in the tarball would lead a consumer's debugger
+// or editor to a file that is not on their disk. This also catches maps left behind
+// in `dist` by an earlier build, which a publish from a maintainer's machine would
+// otherwise carry along.
+test('no source map is packed, since the sources it would lead to are not', () => {
+  const maps = packed().filter((path) => path.endsWith('.map'));
+
+  assert.deepEqual(maps, []);
+});
