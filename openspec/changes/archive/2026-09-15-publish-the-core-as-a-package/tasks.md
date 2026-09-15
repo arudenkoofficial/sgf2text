@@ -36,6 +36,6 @@
 
 ## 6. First release (by hand, outside the repository)
 
-- [ ] 6.1 With the change merged, log in to npm on a maintainer's machine with two-factor authentication enabled, and publish `0.1.0` of the library package by hand. npm cannot attach a trusted publisher to a package that does not exist yet, so the first version cannot come from the workflow.
+- [x] 6.1 With the change merged, log in to npm on a maintainer's machine with two-factor authentication enabled, and publish `0.1.0` of the library package by hand. npm cannot attach a trusted publisher to a package that does not exist yet, so the first version cannot come from the workflow.
 - [ ] 6.2 On npmjs, in the package's settings, register this repository and `publish.yml` as its trusted publisher.
 - [ ] 6.3 Draw the next release through GitHub and confirm the workflow publishes it and the version on npmjs shows provenance.
